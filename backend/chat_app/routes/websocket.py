@@ -62,10 +62,34 @@ class ConnectionManager:
             self.disconnect(websocket)
     
     async def broadcast(self, message: str):
-        """Broadcast a message to all connected clients"""
+        """Broadcast a message to all connected clients, respecting per-client subscriptions.
+
+        The frontend may send a subscription list when connecting (subscribe message). If a client
+        has a "subscriptions" list in its client_info, only events matching those subscription keys
+        will be delivered to that client. If no subscriptions are set for a client, it will receive
+        all events.
+        """
         disconnected = []
+
+        # Try to parse event type from the message so we can respect subscriptions.
+        event_type = ""
+        try:
+            payload = json.loads(message) if isinstance(message, str) else message
+            if isinstance(payload, dict):
+                # common keys: event_type (from Event.to_dict), type (legacy), event (legacy)
+                event_type = payload.get("event_type") or payload.get("type") or payload.get("event") or ""
+        except Exception:
+            payload = None
+
         for connection in self.active_connections:
             try:
+                client_info = self.client_info.get(connection, {}) or {}
+                subs = client_info.get("subscriptions")
+                # If client has explicit subscriptions, only deliver if the event_type matches one of them.
+                if subs and isinstance(subs, list) and event_type:
+                    if event_type not in subs:
+                        continue
+
                 await connection.send_text(message)
             except Exception as e:
                 logger.error(f"Error broadcasting message: {e}")

@@ -106,6 +106,14 @@ class VTuberGUI:
         self.notebook.add(config_frame, text="Configuration")
         self.components['config'] = ConfigTab(config_frame, self)
         self.components['config'].create()
+        
+        # Expose commonly-used tab objects as attributes for compatibility with components
+        # (some handlers expect main_app.chat_tab / .logs_tab etc.)
+        self.status_tab = self.components.get('status')
+        self.chat_tab = self.components.get('chat')
+        self.voice_tab = self.components.get('voice')
+        self.logs_tab = self.components.get('logs')
+        self.config_tab = self.components.get('config')
     
     def setup_menu(self):
         """Setup menu bar"""

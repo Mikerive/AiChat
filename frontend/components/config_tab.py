@@ -3,7 +3,7 @@ Configuration tab component
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 from pathlib import Path
 from typing import Optional
 import logging
@@ -88,6 +88,33 @@ class ConfigTab(BaseComponent):
         self.add_widget("channels_var", self.channels_var)
         self.add_widget("whisper_model_var", self.whisper_model_var)
         self.add_widget("piper_model_var", self.piper_model_var)
+        
+        # Webhooks management UI
+        webhooks_frame = ttk.LabelFrame(self.frame, text="Webhooks")
+        webhooks_frame.pack(fill=tk.BOTH, padx=5, pady=5)
+        
+        self.webhook_listbox = tk.Listbox(webhooks_frame, height=5)
+        self.webhook_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5,0), pady=5)
+        
+        webhook_scroll = ttk.Scrollbar(webhooks_frame, orient=tk.VERTICAL, command=self.webhook_listbox.yview)
+        self.webhook_listbox.configure(yscrollcommand=webhook_scroll.set)
+        webhook_scroll.pack(side=tk.LEFT, fill=tk.Y, padx=(0,5), pady=5)
+        
+        webhook_buttons = ttk.Frame(webhooks_frame)
+        webhook_buttons.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
+        
+        add_hook_btn = ttk.Button(webhook_buttons, text="Add", command=self.add_webhook)
+        add_hook_btn.pack(fill=tk.X, pady=(0,5))
+        remove_hook_btn = ttk.Button(webhook_buttons, text="Remove", command=self.remove_webhook)
+        remove_hook_btn.pack(fill=tk.X, pady=(0,5))
+        test_hook_btn = ttk.Button(webhook_buttons, text="Test", command=self.test_webhook)
+        test_hook_btn.pack(fill=tk.X)
+        
+        # Register webhook widgets for access
+        self.add_widget("webhook_listbox", self.webhook_listbox)
+        self.add_widget("add_hook_btn", add_hook_btn)
+        self.add_widget("remove_hook_btn", remove_hook_btn)
+        self.add_widget("test_hook_btn", test_hook_btn)
     
     def save_config(self):
         """Save configuration"""
@@ -151,9 +178,88 @@ LOG_FILE={self.main_app.settings.log_file}
             messagebox.showinfo("Success", "Configuration reloaded successfully")
             self.add_log("Configuration reloaded")
             
+            # Refresh webhook list after reload
+            try:
+                self.refresh_webhooks()
+            except Exception:
+                pass
+            
         except Exception as e:
             logger.error(f"Error reloading configuration: {e}")
             messagebox.showerror("Error", f"Failed to reload configuration: {e}")
+    
+    # Webhook management methods
+    def refresh_webhooks(self):
+        """Fetch registered webhooks from backend and populate listbox"""
+        try:
+            response = requests.get(f"http://{self.main_app.settings.api_host}:{self.main_app.settings.api_port}/api/system/webhooks")
+            if response.status_code == 200:
+                hooks = response.json().get("webhooks", [])
+                self.webhook_listbox.delete(0, tk.END)
+                for h in hooks:
+                    self.webhook_listbox.insert(tk.END, h)
+            else:
+                self.add_log(f"Failed to get webhooks: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Error refreshing webhooks: {e}")
+            self.add_log(f"Error refreshing webhooks: {e}")
+    
+    def add_webhook(self):
+        """Prompt for a webhook URL and register it with backend"""
+        try:
+            url = simpledialog.askstring("Add Webhook", "Webhook URL (https://...):")
+            if not url:
+                return
+            response = requests.post(
+                f"http://{self.main_app.settings.api_host}:{self.main_app.settings.api_port}/api/webhooks",
+                json={"url": url}
+            )
+            if response.status_code == 200:
+                self.add_log(f"Webhook registered: {url}")
+                self.refresh_webhooks()
+            else:
+                self.add_log(f"Failed to register webhook: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Error adding webhook: {e}")
+            self.add_log(f"Error adding webhook: {e}")
+    
+    def remove_webhook(self):
+        """Remove the selected webhook"""
+        try:
+            sel = self.webhook_listbox.curselection()
+            if not sel:
+                messagebox.showwarning("Remove Webhook", "Select a webhook to remove")
+                return
+            url = self.webhook_listbox.get(sel[0])
+            response = requests.delete(
+                f"http://{self.main_app.settings.api_host}:{self.main_app.settings.api_port}/api/webhooks",
+                params={"url": url}
+            )
+            if response.status_code == 200:
+                self.add_log(f"Webhook removed: {url}")
+                self.refresh_webhooks()
+            else:
+                self.add_log(f"Failed to remove webhook: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Error removing webhook: {e}")
+            self.add_log(f"Error removing webhook: {e}")
+    
+    def test_webhook(self):
+        """Trigger a test event to validate webhook delivery"""
+        try:
+            # Ask for optional message
+            msg = simpledialog.askstring("Test Webhooks", "Test message (optional):", initialvalue="webhook test")
+            response = requests.post(
+                f"http://{self.main_app.settings.api_host}:{self.main_app.settings.api_port}/api/webhooks/test",
+                json=msg if isinstance(msg, str) else {"message": "webhook test"}
+            )
+            if response.status_code == 200:
+                self.add_log("Webhook test event emitted")
+            else:
+                self.add_log(f"Webhook test failed: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Error testing webhook: {e}")
+            self.add_log(f"Error testing webhook: {e}")
     
     def add_log(self, message: str):
         """Add log message"""

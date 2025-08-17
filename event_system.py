@@ -100,6 +100,10 @@ class EventSystem:
         self.event_log: List[Event] = []
         self.max_log_size = 1000
         self._initialized = False
+
+        # External webhook endpoints (list of URL strings). When populated,
+        # emitted events will be POSTed (JSON) to these URLs in a fire-and-forget way.
+        self.webhooks: List[str] = []
     
     async def initialize(self):
         """Initialize the event system and persistent event sink"""
@@ -212,6 +216,20 @@ class EventSystem:
             # Notify WebSocket connections
             await self._notify_websockets(event)
             
+            # Forward to registered webhook URLs (fire-and-forget).
+            # Use event.to_dict() so external receivers get structured JSON.
+            try:
+                if getattr(self, "webhooks", None):
+                    payload = event.to_dict()
+                    for url in list(self.webhooks):
+                        try:
+                            # Schedule non-blocking POST to webhook endpoint
+                            asyncio.create_task(self._send_to_webhook(url, payload))
+                        except Exception as _e:
+                            logger.error(f"Failed to schedule webhook POST to {url}: {_e}")
+            except Exception as _e:
+                logger.error(f"Error scheduling webhooks: {_e}")
+            
         except Exception as e:
             logger.error(f"Error notifying subscribers: {e}")
     
@@ -234,6 +252,46 @@ class EventSystem:
         for websocket in disconnected:
             if websocket in self.websocket_connections:
                 self.websocket_connections.remove(websocket)
+    
+    # -- Webhook management and delivery helpers --------------------------------
+    async def add_webhook(self, url: str):
+        """Register an external webhook URL to receive event POSTs."""
+        try:
+            if url not in self.webhooks:
+                self.webhooks.append(url)
+                logger.info(f"Webhook added: {url}")
+        except Exception as e:
+            logger.error(f"Error adding webhook {url}: {e}")
+
+    async def remove_webhook(self, url: str):
+        """Remove a previously-registered webhook URL."""
+        try:
+            if url in self.webhooks:
+                self.webhooks.remove(url)
+                logger.info(f"Webhook removed: {url}")
+        except Exception as e:
+            logger.error(f"Error removing webhook {url}: {e}")
+
+    async def list_webhooks(self):
+        """Return a copy of registered webhooks."""
+        return list(self.webhooks)
+
+    async def _send_to_webhook(self, url: str, payload: Dict[str, Any]):
+        """
+        Send a POST request to a webhook URL with the event payload.
+        This runs the blocking `requests.post` in a thread pool to avoid blocking the event loop.
+        """
+        try:
+            import requests
+            from functools import partial
+
+            loop = asyncio.get_event_loop()
+            # Use partial to pass kwargs to requests.post in run_in_executor
+            post_call = partial(requests.post, url, json=payload, timeout=5)
+            await loop.run_in_executor(None, post_call)
+            logger.debug(f"Posted event to webhook: {url}")
+        except Exception as e:
+            logger.error(f"Error posting to webhook {url}: {e}")
     
     async def add_websocket_connection(self, websocket):
         """Add WebSocket connection for real-time updates"""

@@ -225,18 +225,60 @@ GET /api/system/status
 GET /api/system/logs
 ```
 
-### WebSocket
+### WebSocket & Events
 
-Connect to the WebSocket endpoint for real-time updates:
+Connect to the WebSocket endpoint for real-time updates and system events:
 
 ```javascript
 const ws = new WebSocket('ws://localhost:8765/api/ws');
 
-ws.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    console.log('Event:', data);
+ws.onopen = () => {
+  // Subscribe to specific event-types (optional). If omitted, GUI will receive all events.
+  ws.send(JSON.stringify({
+    type: "subscribe",
+    events: ["audio.transcribed", "audio.captured", "chat.response"]
+  }));
+};
+
+ws.onmessage = (ev) => {
+  const data = JSON.parse(ev.data);
+  console.log('Event:', data);
+  // Typical event payload from the EventSystem (JSON):
+  // {
+  //   "id": 123456,
+  //   "event_type": "audio.transcribed",
+  //   "message": "Speech-to-text transcription completed",
+  //   "data": { "stream_id": "local-...", "text": "Hello" },
+  //   "severity": "INFO",
+  //   "source": null,
+  //   "timestamp": "2025-08-17T22:17:31.536Z"
+  // }
 };
 ```
+
+WebSocket subscriptions:
+- Send a JSON message with `type: "subscribe"` and an `events` array to receive only those events.
+- The backend will respect per-client subscriptions and only deliver matching events when present.
+
+Webhook-style event payloads:
+- The internal EventSystem uses a consistent JSON schema (see example above). To forward events to your own webhook receiver, POST JSON with the same schema to your endpoint.
+
+Example external webhook receiver (server) expected JSON schema:
+```json
+{
+  "event_type": "chat.response",
+  "message": "LLM response generated",
+  "data": {
+    "stream_id": "local-123",
+    "character_response": "Hello!",
+    "user_input": "Hi"
+  },
+  "severity": "INFO",
+  "timestamp": "2025-08-17T22:17:31.536Z"
+}
+```
+
+Note: The GUI connects to the backend WebSocket at `/api/ws` and the REST endpoints under `/api/*` (chat, tts, voice, system). See the API Documentation section above for endpoint details.
 
 ## GUI Features
 
