@@ -1,4 +1,4 @@
-# VTuber Backend - Reimplementation
+# AiChat Backend - Reimplementation
 
 A comprehensive VTuber streaming backend with voice cloning capabilities, real-time chat functionality, and a debugging GUI interface.
 
