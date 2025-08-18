@@ -172,7 +172,8 @@ def validate_config() -> bool:
             logger.warning("OpenRouter API key not configured - LLM functionality will be limited")
         
         # Check model paths
-        if not settings.piper_model_path.exists():
+        piper_path = Path(settings.piper_model_path)
+        if not piper_path.exists():
             logger.warning(f"Piper model not found at: {settings.piper_model_path}")
         
         # Check database URL

@@ -62,7 +62,12 @@ class WebSocketHandler:
                 logger.error(f"WebSocket error: {e}")
                 self.connected = False
                 if self.main_app:
-                    self.main_app.update_connection_status()
+                    # Use a safer approach for cross-thread GUI updates
+                    try:
+                        self.main_app.root.after_idle(self.main_app.update_connection_status)
+                    except RuntimeError:
+                        # GUI might be closed or not in main loop
+                        pass
             
             # Reconnect after delay
             import time
@@ -74,7 +79,12 @@ class WebSocketHandler:
             self.ws_connection = websocket
             self.connected = True
             if self.main_app:
-                self.main_app.update_connection_status()
+                # Schedule GUI update on main thread
+                try:
+                    self.main_app.root.after_idle(self.main_app.update_connection_status)
+                except RuntimeError:
+                    # GUI might be closed or not in main loop
+                    pass
             
             # Send subscription message
             subscription = {
@@ -89,9 +99,23 @@ class WebSocketHandler:
     
     def send_message(self, message: Dict[str, Any]):
         """Send message via WebSocket"""
-        if self.ws_connection:
+        if self.ws_connection and self.connected:
             try:
-                asyncio.run(self.ws_connection.send(json.dumps(message)))
+                # Create a new event loop for this thread if needed
+                loop = None
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                # Send the message
+                if loop.is_running():
+                    # If loop is already running, schedule the send
+                    asyncio.create_task(self.ws_connection.send(json.dumps(message)))
+                else:
+                    # If loop is not running, run it directly
+                    loop.run_until_complete(self.ws_connection.send(json.dumps(message)))
             except Exception as e:
                 logger.error(f"Error sending WebSocket message: {e}")
     
@@ -143,7 +167,26 @@ class WebSocketHandler:
         """Disconnect WebSocket"""
         self.connected = False
         if self.ws_connection:
-            asyncio.run(self.ws_connection.close())
+            try:
+                # Create a new event loop for this thread if needed
+                loop = None
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                # Run the close operation
+                if loop.is_running():
+                    # If loop is already running, schedule the close
+                    asyncio.create_task(self.ws_connection.close())
+                else:
+                    # If loop is not running, run it directly
+                    loop.run_until_complete(self.ws_connection.close())
+            except Exception as e:
+                logger.error(f"Error closing WebSocket connection: {e}")
+                # Force close the connection
+                self.ws_connection = None
     
     # Default message handlers
     def _handle_chat_message(self, data: Dict[str, Any]):
@@ -269,20 +312,20 @@ class WebSocketHandler:
             
             # Handle special message types according to flow diagram
             if message_type == "transcription":
-                self.handle_transcription_complete(data)
+                self._schedule_gui_update(lambda: self.handle_transcription_complete(data))
                 return
             elif message_type == "chat_complete":
-                self.handle_chat_complete(data)
+                self._schedule_gui_update(lambda: self.handle_chat_complete(data))
                 return
             elif message_type == "error":
                 error_msg = data.get("message", "Unknown error")
                 if self.main_app:
-                    self.main_app.add_log(f"WebSocket Error: {error_msg}")
+                    self._schedule_gui_update(lambda: self.main_app.add_log(f"WebSocket Error: {error_msg}"))
                 return
             elif message_type == "pong":
                 # Handle ping/pong
                 if self.main_app:
-                    self.main_app.add_log("WebSocket: Connection alive")
+                    self._schedule_gui_update(lambda: self.main_app.add_log("WebSocket: Connection alive"))
                 return
             
             # Handle regular event-based messages
@@ -290,14 +333,23 @@ class WebSocketHandler:
             
             # Add to logs if main app is available
             if self.main_app:
-                self.main_app.add_log(f"WS: {event_type} - {message_text}")
+                self._schedule_gui_update(lambda: self.main_app.add_log(f"WS: {event_type} - {message_text}"))
             
             # Handle specific event types
             handler = self.message_handlers.get(event_type)
             if handler:
-                handler(data.get("data", {}))
+                self._schedule_gui_update(lambda: handler(data.get("data", {})))
             
         except Exception as e:
             logger.error(f"Error handling WebSocket message: {e}")
             if self.main_app:
-                self.main_app.add_log(f"WebSocket message error: {e}")
+                self._schedule_gui_update(lambda: self.main_app.add_log(f"WebSocket message error: {e}"))
+
+    def _schedule_gui_update(self, callback):
+        """Schedule a GUI update on the main thread"""
+        if self.main_app and hasattr(self.main_app, 'root'):
+            try:
+                self.main_app.root.after_idle(callback)
+            except RuntimeError:
+                # GUI might be closed or not in main loop
+                pass

@@ -17,6 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from event_system import get_event_system, EventType, EventSeverity
 from database import db_ops
+from backend.chat_app.services.service_manager import get_whisper_service, get_chat_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -534,9 +535,7 @@ async def handle_websocket_message(websocket: WebSocket, message: Dict[str, Any]
             # If an utterance was finalized (silence detected), transcribe and send final result
             if finalized_path:
                 try:
-                    from backend.chat_app.services.whisper_service import WhisperService
-                    from backend.chat_app.services.chat_service import ChatService
-                    whisper_service = WhisperService()
+                    whisper_service = get_whisper_service()
                     transcription_result = await whisper_service.transcribe_audio(finalized_path)
 
                     # Emit transcription complete event (persistent)
@@ -569,7 +568,7 @@ async def handle_websocket_message(websocket: WebSocket, message: Dict[str, Any]
                     # Optionally pass final text to ChatService for LLM processing (preserve existing behavior)
                     if transcription_result.get("text"):
                         try:
-                            chat_service = ChatService()
+                            chat_service = get_chat_service()
                             current_character = await chat_service.get_current_character()
                             if current_character:
                                 chat_response = await chat_service.process_message(
@@ -716,11 +715,10 @@ async def handle_event_broadcast(event):
 async def periodic_stream_transcribe(stream_id: str, websocket: WebSocket):
     """Background task: periodically transcribe accumulated audio buffer and send partial updates"""
     try:
-        from backend.chat_app.services.whisper_service import WhisperService
         import tempfile
         import os
 
-        whisper_service = WhisperService()
+        whisper_service = get_whisper_service()
         session = STREAM_SESSIONS.get(stream_id)
         if session is None:
             return
@@ -806,8 +804,6 @@ async def periodic_stream_transcribe(stream_id: str, websocket: WebSocket):
 async def process_audio_stream_chunk(websocket: WebSocket, audio_data: str, stream_id: str):
     # Backwards-compatible chunk processor (unused by incremental flow)
     try:
-        from backend.chat_app.services.whisper_service import WhisperService
-        from backend.chat_app.services.chat_service import ChatService
         import base64
         import tempfile
         import os
@@ -822,7 +818,7 @@ async def process_audio_stream_chunk(websocket: WebSocket, audio_data: str, stre
 
         try:
             # Speech-to-Text Pipeline: Whisper STT Service
-            whisper_service = WhisperService()
+            whisper_service = get_whisper_service()
             transcription_result = await whisper_service.transcribe_audio(temp_path)
 
             # Emit transcription complete event
@@ -852,7 +848,7 @@ async def process_audio_stream_chunk(websocket: WebSocket, audio_data: str, stre
 
             # Text sent to Chat Service for LLM Processing
             if transcription_result.get("text"):
-                chat_service = ChatService()
+                chat_service = get_chat_service()
                 current_character = await chat_service.get_current_character()
 
                 if current_character:
@@ -924,6 +920,15 @@ async def process_audio_stream_chunk(websocket: WebSocket, audio_data: str, stre
         await websocket.send_text(json.dumps(error_response))
 
 
-# Subscribe to all events when the module is loaded
+# Subscribe to all events when the module is loaded (async-safe)
 event_system = get_event_system()
-event_system.subscribe_to_all(handle_event_broadcast)
+import asyncio
+try:
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        asyncio.create_task(event_system.subscribe_to_all(handle_event_broadcast))
+    else:
+        loop.run_until_complete(event_system.subscribe_to_all(handle_event_broadcast))
+except Exception:
+    # If event system fails, continue without it
+    pass

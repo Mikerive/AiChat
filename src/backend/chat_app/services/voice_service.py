@@ -30,12 +30,25 @@ class VoiceService:
             
             logger.info("Piper TTS initialized")
             
-            # Emit model loaded event
-            self.event_system.emit(
-                EventType.MODEL_LOADED,
-                "Piper TTS model initialized",
-                {"model_type": "piper", "status": "ready"}
-            )
+            # Emit model loaded event (async - will be handled later)
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(self.event_system.emit(
+                        EventType.MODEL_LOADED,
+                        "Piper TTS model initialized",
+                        {"model_type": "piper", "status": "ready"}
+                    ))
+                else:
+                    loop.run_until_complete(self.event_system.emit(
+                        EventType.MODEL_LOADED,
+                        "Piper TTS model initialized",
+                        {"model_type": "piper", "status": "ready"}
+                    ))
+            except Exception:
+                # If event system fails, continue without it
+                pass
             
         except ImportError:
             logger.warning("Piper not installed. Using mock service.")

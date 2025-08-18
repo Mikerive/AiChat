@@ -231,7 +231,7 @@ GET /api/system/status
 
 #### Get Event Logs
 ```http
-GET /api/system/logs
+GET /api/logs
 ```
 
 ### WebSocket & Events

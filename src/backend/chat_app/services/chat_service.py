@@ -32,19 +32,19 @@ class ChatService:
     def __init__(self):
         self.current_character: Optional[Dict[str, Any]] = None
         self.event_system = get_event_system()
-        # Schedule async initialization of default character so we can await DB calls properly.
-        try:
-            asyncio.create_task(self._initialize_default_character())
-        except Exception:
-            # If scheduling fails (no running loop), fall back to synchronous run
-            try:
-                asyncio.get_event_loop().run_until_complete(self._initialize_default_character())
-            except Exception:
-                # Last resort: ignore initialization (tests will proceed)
-                logger.exception("Failed to initialize default character synchronously")
+        self._initialized = False
+        # Don't initialize character during construction - do it lazily when first needed
+    
+    async def _ensure_initialized(self):
+        """Ensure the service is initialized with a default character"""
+        if not self._initialized:
+            await self._initialize_default_character()
     
     async def _initialize_default_character(self):
         """Initialize with default character (async)"""
+        if self._initialized:
+            return
+            
         try:
             # Try to get default character (await async db call)
             character = await db_ops.get_character_by_name("hatsune_miku")
@@ -69,11 +69,17 @@ class ChatService:
                         "profile": character.profile,
                         "personality": character.personality
                     }
+            
+            self._initialized = True
+            logger.info("Default character initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing default character: {e}", exc_info=True)
+            # Set initialized anyway to avoid repeated attempts
+            self._initialized = True
     
     async def process_message(self, message: str, character_id: int, character_name: str) -> ChatResponse:
         """Process a chat message and generate response"""
+        await self._ensure_initialized()
         try:
             # Get character
             character = await db_ops.get_character(character_id)

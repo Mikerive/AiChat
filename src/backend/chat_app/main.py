@@ -18,6 +18,8 @@ from config import get_settings
 from database import get_db, DatabaseManager
 from event_system import get_event_system, EventType, EventSeverity
 from backend.chat_app.routes import voice, system, chat, websocket
+from backend.chat_app.utils.logging_config import setup_logging
+from logs_app.routes import router as logs_router
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,9 @@ async def get_event_system_instance() -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
+    
+    # Setup improved logging first
+    setup_logging("INFO")
     
     settings = get_settings()
     event_system = get_event_system()
@@ -84,6 +89,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
     app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
     app.include_router(system.router, prefix="/api/system", tags=["system"])
+    app.include_router(logs_router, prefix="/api", tags=["logs"])
     app.include_router(websocket.router, prefix="/api")
     
     # Startup and shutdown events

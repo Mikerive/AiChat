@@ -27,6 +27,7 @@ class ChatTab(BaseComponent):
     def create(self):
         """Create chat tab UI"""
         self.frame = ttk.Frame(self.parent)
+        self.frame.pack(fill=tk.BOTH, expand=True)
         
         # Character selection
         char_frame = ttk.LabelFrame(self.frame, text="Character")
@@ -90,8 +91,23 @@ class ChatTab(BaseComponent):
         try:
             response = requests.get(f"{self.api_base_url}/api/chat/characters")
             if response.status_code == 200:
-                characters = response.json().get("characters", [])
-                character_names = [char.get("name", "") for char in characters]
+                data = response.json()
+                # Handle both dict and list responses
+                if isinstance(data, dict):
+                    characters = data.get("characters", [])
+                elif isinstance(data, list):
+                    characters = data
+                else:
+                    characters = []
+                
+                # Handle both string and dict character entries
+                character_names = []
+                for char in characters:
+                    if isinstance(char, dict):
+                        character_names.append(char.get("name", str(char)))
+                    else:
+                        character_names.append(str(char))
+                
                 self.character_combo['values'] = character_names
                 if character_names and not self.character_var.get():
                     self.character_var.set(character_names[0])

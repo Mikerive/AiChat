@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Query, Body, HTTPException
 import asyncio
+import psutil
+import time
 from typing import Optional, Any, Dict, List
 
 # Import the streaming STT service helpers
@@ -9,6 +11,44 @@ from backend.chat_app.services import streaming_stt_service as stt
 from event_system import get_event_system
 
 router = APIRouter()
+
+# Store startup time
+startup_time = time.time()
+
+
+@router.get("/status")
+async def get_system_status():
+    """
+    Get system status information including resource usage and uptime
+    """
+    try:
+        # Get system metrics
+        cpu_usage = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        # Calculate uptime
+        uptime = time.time() - startup_time
+        
+        return {
+            "status": "running",
+            "uptime": uptime,
+            "cpu_usage": cpu_usage,
+            "memory_usage": memory.percent,
+            "disk_usage": {
+                "total": disk.total,
+                "used": disk.used,
+                "free": disk.free,
+                "percent": (disk.used / disk.total) * 100
+            },
+            "services": {
+                "api": "running",
+                "websocket": "running",
+                "event_system": "running"
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get system status: {e}")
 
 
 @router.get("/vad_diagnostics")

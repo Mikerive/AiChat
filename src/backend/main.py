@@ -3,6 +3,12 @@ Main entry point for VTuber backend - delegates to chat_app
 """
 
 import logging
+import sys
+from pathlib import Path
+
+# Add src directory to Python path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from backend.chat_app.main import create_app
 
 # Configure logging

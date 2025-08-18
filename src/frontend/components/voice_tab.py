@@ -23,6 +23,7 @@ class VoiceTab(BaseComponent):
     def create(self):
         """Create voice training tab UI"""
         self.frame = ttk.Frame(self.parent)
+        self.frame.pack(fill=tk.BOTH, expand=True)
         
         # Upload frame
         upload_frame = ttk.LabelFrame(self.frame, text="Upload Audio")

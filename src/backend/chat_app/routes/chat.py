@@ -15,8 +15,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from database import db_ops, Character, ChatLog
 from event_system import get_event_system, EventType, EventSeverity, emit_chat_response
-from backend.chat_app.services.chat_service import ChatService
-from backend.chat_app.services.whisper_service import WhisperService
+from backend.chat_app.services.service_manager import get_whisper_service, get_chat_service
 from backend.chat_app.models.schemas import (
     CharacterResponse, ChatMessage, CharacterSwitch,
     TTSRequest, Character as CharacterSchema
@@ -26,22 +25,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class ChatServiceDep:
-    """Chat service dependency"""
-    
-    def __init__(self):
-        self.chat_service = ChatService()
-        self.whisper_service = WhisperService()
-    
-    async def get_chat_service(self) -> ChatService:
-        return self.chat_service
-    
-    async def get_whisper_service(self) -> WhisperService:
-        return self.whisper_service
+# Dependency injection functions
+def get_chat_service_dep():
+    """Dependency injection for chat service"""
+    return get_chat_service()
+
+def get_whisper_service_dep():
+    """Dependency injection for whisper service"""
+    return get_whisper_service()
 
 
 @router.get("/characters", response_model=List[CharacterSchema])
-async def list_characters(chat_service: ChatService = Depends(ChatServiceDep().get_chat_service)):
+async def list_characters(chat_service = Depends(get_chat_service_dep)):
     """List all available characters"""
     try:
         characters = await db_ops.list_characters()
@@ -62,7 +57,7 @@ async def list_characters(chat_service: ChatService = Depends(ChatServiceDep().g
 @router.get("/characters/{character_id}", response_model=CharacterSchema)
 async def get_character(
     character_id: int,
-    chat_service: ChatService = Depends(ChatServiceDep().get_chat_service)
+    chat_service = Depends(get_chat_service_dep)
 ):
     """Get character by ID"""
     try:
@@ -87,7 +82,7 @@ async def get_character(
 @router.post("/chat", response_model=CharacterResponse)
 async def chat_with_character(
     message: ChatMessage,
-    chat_service: ChatService = Depends(ChatServiceDep().get_chat_service)
+    chat_service = Depends(get_chat_service_dep)
 ):
     """Send chat message to character"""
     try:
@@ -142,7 +137,7 @@ async def chat_with_character(
 @router.post("/switch_character")
 async def switch_character(
     request: CharacterSwitch,
-    chat_service: ChatService = Depends(ChatServiceDep().get_chat_service)
+    chat_service = Depends(get_chat_service_dep)
 ):
     """Switch active character"""
     try:
@@ -180,7 +175,7 @@ async def switch_character(
 @router.post("/tts")
 async def text_to_speech(
     request: TTSRequest,
-    chat_service: ChatService = Depends(ChatServiceDep().get_chat_service)
+    chat_service = Depends(get_chat_service_dep)
 ):
     """Generate text-to-speech audio"""
     try:
@@ -215,7 +210,7 @@ async def text_to_speech(
 @router.post("/stt")
 async def speech_to_text(
     file: UploadFile = File(...),
-    whisper_service: WhisperService = Depends(ChatServiceDep().get_whisper_service)
+    whisper_service = Depends(get_whisper_service_dep)
 ):
     """Convert speech to text using Whisper"""
     try:
@@ -249,7 +244,7 @@ async def speech_to_text(
 async def get_chat_history(
     character_id: Optional[int] = None,
     limit: int = 100,
-    chat_service: ChatService = Depends(ChatServiceDep().get_chat_service)
+    chat_service = Depends(get_chat_service_dep)
 ):
     """Get chat history"""
     try:
@@ -274,7 +269,7 @@ async def get_chat_history(
 
 @router.get("/status")
 async def get_chat_status(
-    chat_service: ChatService = Depends(ChatServiceDep().get_chat_service)
+    chat_service = Depends(get_chat_service_dep)
 ):
     """Get chat system status"""
     try:

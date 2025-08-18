@@ -26,6 +26,7 @@ class LogsTab(BaseComponent):
     def create(self):
         """Create logs tab UI"""
         self.frame = ttk.Frame(self.parent)
+        self.frame.pack(fill=tk.BOTH, expand=True)
         
         # Log controls
         controls_frame = ttk.Frame(self.frame)
@@ -39,6 +40,7 @@ class LogsTab(BaseComponent):
         self.log_filter_var = tk.StringVar(value="all")
         log_filter_combo = ttk.Combobox(controls_frame, textvariable=self.log_filter_var, width=15)
         log_filter_combo['values'] = ["all", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        log_filter_combo.bind('<<ComboboxSelected>>', lambda e: self.refresh_logs())
         log_filter_combo.pack(side=tk.LEFT, padx=(0, 5))
         
         refresh_logs_button = ttk.Button(controls_frame, text="Refresh Logs", command=self.refresh_logs)
@@ -58,23 +60,45 @@ class LogsTab(BaseComponent):
         self.add_widget("logs_text", self.logs_text)
     
     def refresh_logs(self):
-        """Refresh event logs"""
+        """Refresh event logs using API filtering"""
         try:
-            response = requests.get(f"{self.api_base_url}/api/system/logs")
+            # Build API parameters
+            params = {"limit": 1000}  # Get more logs by default
+            filter_level = self.log_filter_var.get()
+            
+            # Use server-side filtering if not "all"
+            if filter_level != "all":
+                params["severity"] = filter_level
+                
+            response = requests.get(f"{self.api_base_url}/api/logs/", params=params)
             if response.status_code == 200:
                 logs = response.json().get("logs", [])
                 
                 # Clear existing logs
                 self.logs_text.delete(1.0, tk.END)
                 
-                # Add logs
+                # Add logs (filtering already done server-side)
                 for log in logs:
                     severity = log.get("severity", "INFO")
                     message = log.get("message", "")
-                    timestamp = log.get("timestamp", "")[:19] if log.get("timestamp") else ""
+                    timestamp = log.get("timestamp", "")
+                    module = log.get("module", "")
                     
-                    log_line = f"[{timestamp}] [{severity}] {message}\n"
-                    self.logs_text.insert(tk.END, log_line)
+                    # Format log line with proper structure
+                    if timestamp:
+                        log_line = f"[{timestamp}] [{severity}] {module}: {message}\n"
+                    else:
+                        log_line = f"[{severity}] {message}\n"
+                    
+                    # Color coding based on severity
+                    if severity == "ERROR":
+                        # Insert with red color (if supported)
+                        self.logs_text.insert(tk.END, log_line)
+                    elif severity == "WARNING":
+                        # Insert with yellow color (if supported)
+                        self.logs_text.insert(tk.END, log_line)
+                    else:
+                        self.logs_text.insert(tk.END, log_line)
                 
                 # Auto-scroll to bottom
                 self.logs_text.see(tk.END)
@@ -82,22 +106,46 @@ class LogsTab(BaseComponent):
             logger.error(f"Error refreshing logs: {e}")
     
     def clear_logs(self):
-        """Clear event logs"""
+        """Clear event logs using proper DELETE method"""
         try:
-            response = requests.post(f"{self.api_base_url}/api/system/logs/clear")
+            response = requests.delete(f"{self.api_base_url}/api/logs/")
             if response.status_code == 200:
                 self.logs_text.delete(1.0, tk.END)
-                self.add_log("Logs cleared")
+                self.add_log("Logs cleared successfully")
+                # Refresh logs to show the clear operation logged
+                self.refresh_logs()
         except Exception as e:
             logger.error(f"Error clearing logs: {e}")
+            self.add_log(f"Error clearing logs: {e}")
     
-    def add_log(self, message: str):
-        """Add log message"""
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") if self.main_app else ""
-        log_line = f"[{timestamp}] {message}\n"
-        self.logs_text.insert(tk.END, log_line)
-        self.logs_text.see(tk.END)
+    def add_log(self, message: str, severity: str = "INFO"):
+        """Add log message using POST API"""
+        try:
+            # Post log to backend API
+            log_data = {
+                "message": message,
+                "severity": severity,
+                "module": "frontend.gui"
+            }
+            response = requests.post(f"{self.api_base_url}/api/logs/", json=log_data)
+            
+            if response.status_code == 200:
+                # Also display locally for immediate feedback
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                log_line = f"[{timestamp}] [{severity}] frontend.gui: {message}\n"
+                self.logs_text.insert(tk.END, log_line)
+                self.logs_text.see(tk.END)
+            else:
+                logger.error(f"Failed to post log: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Error posting log: {e}")
+            # Fallback to local display only
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log_line = f"[{timestamp}] [{severity}] frontend.gui: {message}\n"
+            self.logs_text.insert(tk.END, log_line)
+            self.logs_text.see(tk.END)
     
     def refresh(self):
         """Refresh component data"""

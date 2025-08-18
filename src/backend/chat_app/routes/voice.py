@@ -18,8 +18,7 @@ from event_system import (
     emit_training_started, emit_training_progress, 
     emit_training_completed, emit_error, emit_audio_uploaded, emit_audio_processed
 )
-from backend.chat_app.services.voice_service import VoiceService
-from backend.chat_app.services.whisper_service import WhisperService
+from backend.chat_app.services.service_manager import get_whisper_service, get_voice_service, get_tts_finetune_service
 from backend.tts_finetune_app.processors.audio_processor import AudioProcessor
 from backend.tts_finetune_app.train_voice import VoiceTrainer, VoiceTrainerConfig
 
@@ -27,32 +26,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class VoiceServiceDep:
-    """Voice service dependency"""
-    
-    def __init__(self):
-        self.voice_service = VoiceService()
-        self.whisper_service = WhisperService()
-    
-    async def get_voice_service(self) -> VoiceService:
-        return self.voice_service
-    
-    async def get_whisper_service(self) -> WhisperService:
-        return self.whisper_service
+# Dependency injection functions
+def get_voice_service_dep():
+    """Dependency injection for voice service"""
+    return get_voice_service()
+
+def get_whisper_service_dep():
+    """Dependency injection for whisper service"""
+    return get_whisper_service()
+
+def get_tts_finetune_service_dep():
+    """Dependency injection for TTS finetune service"""
+    return get_tts_finetune_service()
 
 
-class TTSFinetuneServiceDep:
-    """Dependency wrapper for TTS finetune service (keeps controllers thin)"""
-    def __init__(self):
-        try:
-            from backend.chat_app.services.tts_finetune_service import TTSFinetuneService
-            self._service = TTSFinetuneService()
-        except Exception as e:
-            # Service may be unavailable in some environments (tests); expose None
-            self._service = None
-
-    async def get_service(self):
-        return self._service
 
 
 class TrainRequest(BaseModel):
@@ -67,7 +54,7 @@ class TrainRequest(BaseModel):
 @router.post("/upload")
 async def upload_audio(
     file: UploadFile = File(...),
-    voice_service: VoiceService = Depends(VoiceServiceDep().get_voice_service)
+    voice_service = Depends(get_voice_service_dep)
 ):
     """Upload an audio file for processing"""
     try:
@@ -100,7 +87,7 @@ async def upload_audio(
 @router.post("/process")
 async def process_uploaded_audio(
     filename: str,
-    voice_service: VoiceService = Depends(VoiceServiceDep().get_voice_service)
+    voice_service = Depends(get_voice_service_dep)
 ):
     """Process a previously uploaded file into training clips"""
     try:
@@ -144,7 +131,7 @@ async def process_uploaded_audio(
 
 @router.get("/clips")
 async def list_training_clips(
-    voice_service: VoiceService = Depends(VoiceServiceDep().get_voice_service)
+    voice_service = Depends(get_voice_service_dep)
 ):
     """List processed training clips"""
     try:
@@ -174,7 +161,7 @@ async def list_training_clips(
 async def start_training(
     req: TrainRequest,
     background_tasks: BackgroundTasks,
-    voice_service: VoiceService = Depends(VoiceServiceDep().get_voice_service)
+    voice_service = Depends(get_voice_service_dep)
 ):
     """Start a background training job using processed clips"""
     try:
@@ -277,7 +264,7 @@ async def start_training(
 @router.post("/manifest")
 async def generate_manifest_endpoint(
     output_dir: str,
-    tts_service = Depends(TTSFinetuneServiceDep().get_service)
+    tts_service = Depends(get_tts_finetune_service_dep)
 ):
     """Generate Piper manifest from processed clips"""
     try:
@@ -308,7 +295,7 @@ async def generate_manifest_endpoint(
 async def start_orchestrator_endpoint(
     model_name: str,
     background_tasks: BackgroundTasks,
-    tts_service = Depends(TTSFinetuneServiceDep().get_service)
+    tts_service = Depends(get_tts_finetune_service_dep)
 ):
     """Start orchestrated Piper training in background"""
     try:
@@ -351,7 +338,7 @@ async def start_orchestrator_endpoint(
 @router.get("/checkpoints")
 async def list_checkpoints(
     model_name: Optional[str] = None,
-    voice_service: VoiceService = Depends(VoiceServiceDep().get_voice_service)
+    voice_service = Depends(get_voice_service_dep)
 ):
     """List available checkpoints for models"""
     try:
@@ -382,7 +369,7 @@ async def list_checkpoints(
 
 @router.get("/models")
 async def list_models(
-    voice_service: VoiceService = Depends(VoiceServiceDep().get_voice_service)
+    voice_service = Depends(get_voice_service_dep)
 ):
     """List available voice models"""
     try:
@@ -412,7 +399,7 @@ async def list_models(
 @router.post("/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(...),
-    whisper_service: VoiceService = Depends(VoiceServiceDep().get_voice_service)
+    whisper_service = Depends(get_whisper_service_dep)
 ):
     """Transcribe audio file using Whisper"""
     try:
@@ -456,7 +443,7 @@ async def transcribe_audio(
 
 @router.get("/status")
 async def get_voice_status(
-    voice_service: VoiceService = Depends(VoiceServiceDep().get_voice_service)
+    voice_service = Depends(get_voice_service_dep)
 ):
     """Get voice training system status"""
     try:

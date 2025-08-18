@@ -12,6 +12,9 @@ import websockets
 import asyncio
 import json
 import threading
+import subprocess
+import time
+import os
 
 import sys
 from pathlib import Path
@@ -20,12 +23,12 @@ sys.path.append(str(Path(__file__).parent.parent))
 from config import get_settings
 
 # Import components
-from components.websocket_handler import WebSocketHandler
-from components.status_tab import StatusTab
-from components.chat_tab import ChatTab
-from components.voice_tab import VoiceTab
-from components.logs_tab import LogsTab
-from components.config_tab import ConfigTab
+from frontend.components.websocket_handler import WebSocketHandler
+from frontend.components.status_tab import StatusTab
+from frontend.components.chat_tab import ChatTab
+from frontend.components.voice_tab import VoiceTab
+from frontend.components.logs_tab import LogsTab
+from frontend.components.config_tab import ConfigTab
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,11 @@ class VTuberGUI:
         self.refresh_interval = 1000  # milliseconds
         self.datetime = datetime
         
+        # Backend management
+        self.backend_process = None
+        self.backend_startup_attempted = False
+        self.connection_check_count = 0
+        
         # Create WebSocket handler
         self.ws_handler = WebSocketHandler(self)
         
@@ -55,10 +63,10 @@ class VTuberGUI:
         self.create_widgets()
         self.setup_menu()
         
-        # Start WebSocket connection
-        self.start_websocket()
+        # Don't auto-start WebSocket - let user control it manually
+        # self.start_websocket()
         
-        # Start auto-refresh
+        # Start auto-refresh (but don't auto-connect)
         self.start_auto_refresh()
         
         # Handle window close
@@ -131,6 +139,13 @@ class VTuberGUI:
         edit_menu.add_command(label="Clear Logs", command=self.clear_logs)
         edit_menu.add_command(label="Refresh All", command=self.refresh_all)
         
+        # Server menu
+        server_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Server", menu=server_menu)
+        server_menu.add_command(label="Start Backend", command=self.manual_start_backend)
+        server_menu.add_command(label="Stop Backend", command=self.stop_backend)
+        server_menu.add_command(label="Restart Connection", command=self.restart_connection)
+        
         # View menu
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="View", menu=view_menu)
@@ -169,7 +184,7 @@ class VTuberGUI:
         """Refresh all tabs"""
         if hasattr(self, 'components'):
             if 'status' in self.components:
-                self.components['status'].refresh_status()
+                self.components['status'].refresh_all_status()
             if 'chat' in self.components:
                 self.components['chat'].refresh()
             if 'voice' in self.components:
@@ -180,7 +195,7 @@ class VTuberGUI:
     def refresh_status(self):
         """Refresh system status"""
         if hasattr(self, 'components') and 'status' in self.components:
-            self.components['status'].refresh_status()
+            self.components['status'].refresh_all_status()
     
     def refresh_characters(self):
         """Refresh character list"""
@@ -259,14 +274,101 @@ class VTuberGUI:
     
     def update_connection_status(self):
         """Update connection status display"""
+        # Don't auto-start backend - let user control it manually
+        
         if hasattr(self, 'components') and 'status' in self.components:
-            self.components['status'].update_connection_status()
+            # Use after_idle to ensure GUI updates happen on main thread
+            self.root.after_idle(lambda: self.components['status'].update_connection_status())
     
     def update_system_status(self, status_data: Dict[str, Any]):
         """Update system status"""
         if hasattr(self, 'components') and 'status' in self.components:
             self.components['status'].update_system_status_display(status_data)
     
+    def attempt_backend_startup(self):
+        """Attempt to start the backend server automatically"""
+        if self.backend_startup_attempted:
+            return
+            
+        self.backend_startup_attempted = True
+        
+        # Show status message
+        if hasattr(self, 'components') and 'logs' in self.components:
+            self.add_log("Connection failed. Attempting to start backend server...")
+        
+        try:
+            # Find the backend main.py file
+            src_dir = Path(__file__).parent.parent
+            backend_main = src_dir / "backend" / "chat_app" / "main.py"
+            
+            if not backend_main.exists():
+                # Try alternative path
+                backend_main = src_dir / "main.py"
+                
+            # Try to start using backend/main.py
+            backend_main = src_dir / "backend" / "main.py"
+            if backend_main.exists():
+                # Start backend process directly
+                self.backend_process = subprocess.Popen([
+                    sys.executable, str(backend_main)
+                ], cwd=str(src_dir), 
+                   stdout=subprocess.PIPE, 
+                   stderr=subprocess.PIPE,
+                   text=True)
+                
+                self.add_log(f"Started backend server (PID: {self.backend_process.pid})")
+                
+                # Wait a moment for the server to start, then attempt reconnection
+                self.root.after(3000, self.retry_websocket_connection)
+            else:
+                self.add_log("Could not locate backend server script")
+                
+        except Exception as e:
+            logger.error(f"Failed to start backend: {e}")
+            self.add_log(f"Failed to start backend: {e}")
+
+    def retry_websocket_connection(self):
+        """Retry WebSocket connection after backend startup"""
+        self.add_log("Retrying WebSocket connection...")
+        if hasattr(self, 'ws_handler'):
+            self.ws_handler.start()
+
+    def is_backend_running(self) -> bool:
+        """Check if backend process is still running"""
+        if self.backend_process is None:
+            return False
+        return self.backend_process.poll() is None
+
+    def stop_backend(self):
+        """Stop the backend server if it was started by this GUI"""
+        if self.backend_process and self.is_backend_running():
+            try:
+                self.backend_process.terminate()
+                self.add_log("Backend server stopped")
+            except Exception as e:
+                logger.error(f"Error stopping backend: {e}")
+                self.add_log(f"Error stopping backend: {e}")
+
+    def manual_start_backend(self):
+        """Manually start the backend server"""
+        if self.is_backend_running():
+            self.add_log("Backend server is already running")
+            return
+        
+        # Reset the auto-startup flag to allow manual start
+        self.backend_startup_attempted = False
+        self.attempt_backend_startup()
+
+    def restart_connection(self):
+        """Restart WebSocket connection"""
+        self.add_log("Restarting WebSocket connection...")
+        self.connected = False
+        self.connection_check_count = 0
+        
+        if hasattr(self, 'ws_handler'):
+            self.ws_handler.disconnect()
+            self.root.after(1000, lambda: self.ws_handler.start())
+
     def show_about(self):
         """Show about dialog"""
         about_text = """VTuber Backend - Debug Command Center
@@ -280,6 +382,7 @@ Features:
 - Voice training and model management
 - Event logging and filtering
 - Configuration management
+- Auto-start backend server
 
 Created with Python, Tkinter, and FastAPI."""
         
@@ -291,6 +394,10 @@ Created with Python, Tkinter, and FastAPI."""
             self.connected = False
             if hasattr(self, 'ws_handler'):
                 self.ws_handler.disconnect()
+            
+            # Stop backend if we started it
+            self.stop_backend()
+            
             self.root.destroy()
 
 

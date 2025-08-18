@@ -42,12 +42,25 @@ class WhisperService:
             
             logger.info("Whisper model loaded successfully")
             
-            # Emit model loaded event
-            self.event_system.emit(
-                EventType.MODEL_LOADED,
-                f"Whisper model '{self.model_name}' loaded",
-                {"model_name": self.model_name, "device": "cpu"}
-            )
+            # Emit model loaded event (async-safe)
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(self.event_system.emit(
+                        EventType.MODEL_LOADED,
+                        f"Whisper model '{self.model_name}' loaded",
+                        {"model_name": self.model_name, "device": "cpu"}
+                    ))
+                else:
+                    loop.run_until_complete(self.event_system.emit(
+                        EventType.MODEL_LOADED,
+                        f"Whisper model '{self.model_name}' loaded",
+                        {"model_name": self.model_name, "device": "cpu"}
+                    ))
+            except Exception:
+                # If event system fails, continue without it
+                pass
             
         except ImportError:
             logger.warning("Whisper not installed. Using mock service.")

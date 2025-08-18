@@ -5,7 +5,7 @@ Configuration tab component
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 import logging
 import sys
 from pathlib import Path
@@ -25,6 +25,7 @@ class ConfigTab(BaseComponent):
     def create(self):
         """Create configuration tab UI"""
         self.frame = ttk.Frame(self.parent)
+        self.frame.pack(fill=tk.BOTH, expand=True)
         
         # API Configuration
         api_frame = ttk.LabelFrame(self.frame, text="API Configuration")
