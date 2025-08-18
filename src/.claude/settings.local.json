@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(move:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

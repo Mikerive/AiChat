@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  tts_finetune_app:
+    build:
+      context: .
+      dockerfile: backend/tts_finetune_app/Dockerfile
+    image: tts-finetune-app:latest
+    volumes:
+      - ./backend/tts_finetune_app/training_data:/app/backend/tts_finetune_app/training_data
+      - ./backend/tts_finetune_app/checkpoints:/app/backend/tts_finetune_app/checkpoints
+    environment:
+      - PYTHONUNBUFFERED=1
+    tty: true
+    stdin_open: true
+    command: bash
+
+  ingest:
+    image: tts-finetune-app:latest
+    depends_on:
+      - tts_finetune_app
+    volumes:
+      - ./backend/tts_finetune_app/training_data:/app/backend/tts_finetune_app/training_data
+      - ./backend/tts_finetune_app/checkpoints:/app/backend/tts_finetune_app/checkpoints
+    entrypoint: ["python", "backend/tts_finetune_app/scripts/ingest.py"]
+    # Usage on Windows CMD:
+    # docker-compose build
+    # docker-compose run --rm ingest C:\path\to\your\input.mp3

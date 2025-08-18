@@ -140,39 +140,10 @@ class WebSocketHandler:
         self.send_message(message)
     
     def disconnect(self):
-        """Disconnect WebSocket safely from any thread/loop.
-
-        We attempt a cooperative close; if the connection belongs to a different
-        asyncio loop (created in the websocket worker thread), fall back to closing
-        the underlying transport to avoid "different loop" errors.
-        """
+        """Disconnect WebSocket"""
         self.connected = False
-        if not self.ws_connection:
-            return
-
-        try:
-            # Try polite coroutine-based close. This may raise RuntimeError if there
-            # is already an active running event loop in this thread.
+        if self.ws_connection:
             asyncio.run(self.ws_connection.close())
-            return
-        except RuntimeError:
-            # Loop mismatch: try lower-level transport close as a best-effort fallback.
-            try:
-                transport = getattr(self.ws_connection, "transport", None)
-                if transport:
-                    transport.close()
-                    logger.debug("WebSocket transport closed as fallback")
-                    return
-            except Exception as _e:
-                logger.debug(f"Transport close fallback failed: {_e}")
-        except Exception as e:
-            logger.debug(f"Error closing websocket via asyncio.run: {e}")
-
-        # Final best-effort: try to cancel any references and mark disconnected.
-        try:
-            self.ws_connection = None
-        except Exception:
-            pass
     
     # Default message handlers
     def _handle_chat_message(self, data: Dict[str, Any]):

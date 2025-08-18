@@ -1,9 +1,19 @@
+# DEPRECATED: This project no longer uses Conda environment YAMLs.
+# Use a Python virtual environment and pip instead:
+#
+#   python -m venv venv
+#   source venv/bin/activate   # Windows: venv\Scripts\activate
+#   python -m pip install --upgrade pip
+#   pip install -r requirements.txt
+#
+# The original Conda YAML was intentionally removed to avoid Conda-related build issues.
+# If you still prefer a Conda workflow, create a Conda env and install the requirements file:
+#   conda create -n main_workspace python=3.11 pip
+#   conda activate main_workspace
+#   pip install -r requirements.txt
+#
+# For package development, install editable packages after activating the venv:
+#   pip install -e ./backend/chat_app
+#
+# (This file is kept only as a short note; dependencies are managed in requirements.txt)
 name: main_workspace
-channels:
-  - conda-forge
-  - defaults
-dependencies:
-  - python=3.11
-  - pip
-  - pip:
-    - -r requirements.txt

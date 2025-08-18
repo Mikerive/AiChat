@@ -63,24 +63,15 @@ VTuber Backend
    cd VtuberMiku
    ```
 
-2. **Recommended — use the helper scripts**
-   - Linux/macOS (bash):
-     ```bash
-     ./scripts/create_envs.sh
-     ```
-   - Windows (PowerShell):
-     ```powershell
-     .\scripts\create_envs.ps1
-     ```
-   The helper scripts will create a Python virtual environment at `./venv`, upgrade pip, install packages from [`requirements.txt`](requirements.txt:1), and install local editable packages such as `./backend/chat_app` if present.
-
-3. **Manual (alternative) — create a venv and install requirements**
+2. **Create virtual environment**
    ```bash
    python -m venv venv
-   source venv/bin/activate    # On Windows (cmd): venv\Scripts\activate
-   python -m pip install --upgrade pip
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
    pip install -r requirements.txt
-   pip install -e ./backend/chat_app   # for editable development install
    ```
 
 4. **Configure environment**
