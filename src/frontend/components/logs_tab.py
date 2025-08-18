@@ -122,11 +122,17 @@ class LogsTab(BaseComponent):
         """Add log message using POST API"""
         try:
             # Post log to backend API
-            log_data = {
-                "message": message,
-                "severity": severity,
-                "module": "frontend.gui"
-            }
+            # Prefer sending structured payload including source and http_code when available
+            if isinstance(message, dict) and ("error_code" in message or "http_code" in message):
+                log_data = message
+            else:
+                log_data = {
+                    "message": message,
+                    "severity": severity,
+                    "module": "frontend.gui",
+                    "source": "frontend"
+                }
+            # If caller passed an http_code via severity or message dict, preserve it
             response = requests.post(f"{self.api_base_url}/api/logs/", json=log_data)
             
             if response.status_code == 200:

@@ -75,34 +75,97 @@ class LogsService:
         
         return log_entries
     
-    def create_log_entry(self, message: str, severity: str = "INFO", 
-                        module: str = "api", timestamp: Optional[str] = None) -> Dict[str, str]:
-        """Create a new log entry"""
+    def create_log_entry(self, message: Optional[str] = None, severity: str = "INFO",
+                        module: str = "api", timestamp: Optional[str] = None,
+                        http_code: Optional[int] = None, source: Optional[str] = None,
+                        error_code: Optional[str] = None, params: Optional[Dict[str, object]] = None
+                        ) -> Dict[str, object]:
+        """Create a new log entry.
+
+        Supports:
+        - Direct message + severity (legacy)
+        - http_code: standard HTTP status code (e.g., 200, 404, 500) which maps to severity
+        - error_code + params: legacy deterministic message permutations (fallback)
+        - source: attribute the log (e.g., 'frontend', 'backend')
+        """
+        # If http_code provided, derive severity from it
+        if http_code is not None:
+            try:
+                code = int(http_code)
+                if 500 <= code <= 599:
+                    severity = "ERROR"
+                elif 400 <= code <= 499:
+                    severity = "WARNING"
+                else:
+                    severity = "INFO"
+            except Exception:
+                # ignore and keep provided severity
+                pass
+
+        # If error_code provided, derive message/severity deterministically (legacy support)
+        if error_code:
+            try:
+                from .error_codes import format_from_error_code
+                formatted = format_from_error_code(error_code, params)
+                # Only override message/severity if not provided by http_code mapping
+                # http_code mapping takes precedence for severity
+                if 'severity' in formatted and (http_code is None):
+                    severity = formatted.get("severity", severity)
+                message = formatted.get("message", message or f"{error_code}")
+            except Exception as e:
+                logger.exception(f"Error formatting from error_code {error_code}: {e}")
+                # fallback to using error_code as message
+                message = message or f"{error_code}"
+
+        # Ensure we have a message
+        if not message:
+            message = "No message provided"
+
         # Set timestamp if not provided
         if not timestamp:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         # Format log entry according to our logging format
         milliseconds = datetime.now().microsecond // 1000
+
+        # If source provided, optionally write to a per-source file (optional sink)
+        if source:
+            dest = self.log_file_path.parent / f"{source}.log"
+        else:
+            dest = self.log_file_path
+
         formatted_entry = f"{timestamp},{milliseconds:03d} - {module} - {severity} - {message}"
-        
+
         # Ensure log directory exists
-        self.log_file_path.parent.mkdir(parents=True, exist_ok=True)
+        dest.parent.mkdir(parents=True, exist_ok=True)
         
-        # Append to log file
-        with open(self.log_file_path, 'a', encoding='utf-8') as f:
-            f.write(formatted_entry + '\n')
+        # Append to appropriate log file
+        try:
+            with open(dest, 'a', encoding='utf-8') as f:
+                f.write(formatted_entry + '\n')
+        except Exception as e:
+            logger.exception(f"Failed to write to log file {dest}: {e}")
         
         # Also log through Python logging system
         log_level = getattr(logging, severity, logging.INFO)
         logger.log(log_level, f"[{module}] {message}")
-        
-        return {
+
+        result: Dict[str, object] = {
             "timestamp": timestamp,
             "module": module,
             "severity": severity,
             "message": message
         }
+        if http_code is not None:
+            result["http_code"] = http_code
+        if source:
+            result["source"] = source
+        if error_code:
+            result["error_code"] = error_code
+        if params:
+            result["params"] = params
+
+        return result
     
     def clear_logs(self) -> bool:
         """Clear all logs"""

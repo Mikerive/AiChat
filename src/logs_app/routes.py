@@ -67,7 +67,11 @@ async def create_log_entry(
             message=log_entry.message,
             severity=log_entry.severity,
             module=log_entry.module,
-            timestamp=log_entry.timestamp
+            timestamp=log_entry.timestamp,
+            http_code=log_entry.http_code,
+            source=log_entry.source,
+            error_code=log_entry.error_code,
+            params=log_entry.params
         )
         
         return {
