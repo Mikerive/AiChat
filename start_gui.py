@@ -10,31 +10,50 @@ import threading
 import time
 from pathlib import Path
 
-# Add the project root to Python path
+# Add the project root and frontend directory to Python path so imports like
+# "from components..." inside frontend modules resolve correctly when running
+# the startup script from the repository root.
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+# Also add the frontend package directory so top-level "components" imports work
+frontend_dir = project_root / "frontend"
+if str(frontend_dir) not in sys.path:
+    sys.path.insert(0, str(frontend_dir))
 
 def start_backend():
-    """Start the FastAPI backend"""
+    """Start the FastAPI backend as a subprocess without changing the current working directory.
+
+    This avoids altering the interpreter's global cwd (which breaks imports for the GUI).
+    We run the backend as a module from the project root so 'backend' is importable.
+    """
     print("Starting FastAPI backend...")
     try:
-        # Change to backend directory and start the server
-        backend_dir = project_root / "backend"
-        os.chdir(backend_dir)
-        
-        # Start the backend server
-        subprocess.run([sys.executable, "main.py"])
+        # Run backend as a module from the project root so package imports resolve.
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "backend.main"],
+            cwd=str(project_root),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT
+        )
+        print(f"Backend started (pid={proc.pid})")
     except Exception as e:
         print(f"Error starting backend: {e}")
         return False
     return True
 
 def start_gui():
-    """Start the Tkinter GUI"""
-    print("Starting Tkinter GUI...")
+    """Start the Tkinter GUI in a separate process to avoid import side-effects
+    that can create unintended secondary windows when modules are imported into
+    the current interpreter."""
+    print("Starting Tkinter GUI (separate process)...")
     try:
-        from frontend.gui import main
-        main()
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "frontend.gui"],
+            cwd=str(project_root),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT
+        )
+        print(f"GUI started (pid={proc.pid})")
     except Exception as e:
         print(f"Error starting GUI: {e}")
         return False

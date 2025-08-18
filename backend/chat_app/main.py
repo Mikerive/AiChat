@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -85,6 +86,14 @@ def create_app() -> FastAPI:
     app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
     app.include_router(system.router, prefix="/api/system", tags=["system"])
     app.include_router(websocket.router, prefix="/api")
+    
+    # Serve generated audio files (if present) at /audio
+    try:
+        static_dir = Path(__file__).parent / "audio" / "generated"
+        static_dir.mkdir(parents=True, exist_ok=True)
+        app.mount("/audio", StaticFiles(directory=str(static_dir)), name="audio")
+    except Exception as e:
+        logger.warning(f"Could not mount static audio directory: {e}")
     
     # Startup and shutdown events
     @app.on_event("startup")

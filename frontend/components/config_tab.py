@@ -5,7 +5,7 @@ Configuration tab component
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 import logging
 import sys
 from pathlib import Path

@@ -35,7 +35,7 @@ class VTuberGUI:
     
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("VTuber Backend - Debug Command Center")
+        self.root.title("VTuber Backend - Command Center")
         self.root.geometry("1200x800")
         
         # Settings
@@ -82,30 +82,41 @@ class VTuberGUI:
         self.notebook.add(status_frame, text="System Status")
         self.components['status'] = StatusTab(status_frame, self)
         self.components['status'].create()
+        # Ensure the component's internal frame is attached to the tab container
+        if getattr(self.components['status'], "frame", None) is not None:
+            self.components['status'].frame.pack(fill=tk.BOTH, expand=True)
         
         # Chat Tab
         chat_frame = ttk.Frame(self.notebook)
         self.notebook.add(chat_frame, text="Chat Interface")
         self.components['chat'] = ChatTab(chat_frame, self)
         self.components['chat'].create()
+        if getattr(self.components['chat'], "frame", None) is not None:
+            self.components['chat'].frame.pack(fill=tk.BOTH, expand=True)
         
         # Voice Tab
         voice_frame = ttk.Frame(self.notebook)
         self.notebook.add(voice_frame, text="Voice Training")
         self.components['voice'] = VoiceTab(voice_frame, self)
         self.components['voice'].create()
+        if getattr(self.components['voice'], "frame", None) is not None:
+            self.components['voice'].frame.pack(fill=tk.BOTH, expand=True)
         
         # Logs Tab
         logs_frame = ttk.Frame(self.notebook)
         self.notebook.add(logs_frame, text="Event Logs")
         self.components['logs'] = LogsTab(logs_frame, self)
         self.components['logs'].create()
+        if getattr(self.components['logs'], "frame", None) is not None:
+            self.components['logs'].frame.pack(fill=tk.BOTH, expand=True)
         
         # Config Tab
         config_frame = ttk.Frame(self.notebook)
         self.notebook.add(config_frame, text="Configuration")
         self.components['config'] = ConfigTab(config_frame, self)
         self.components['config'].create()
+        if getattr(self.components['config'], "frame", None) is not None:
+            self.components['config'].frame.pack(fill=tk.BOTH, expand=True)
         
         # Expose commonly-used tab objects as attributes for compatibility with components
         # (some handlers expect main_app.chat_tab / .logs_tab etc.)
@@ -269,10 +280,10 @@ class VTuberGUI:
     
     def show_about(self):
         """Show about dialog"""
-        about_text = """VTuber Backend - Debug Command Center
+        about_text = """VTuber Backend - Command Center
 
 Version: 1.0.0
-A debugging interface for the VTuber streaming backend.
+A control interface for the VTuber streaming backend.
 
 Features:
 - Real-time system monitoring

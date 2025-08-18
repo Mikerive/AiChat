@@ -1,0 +1,22 @@
+name: tts_finetune_app
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - scipy
+  - librosa
+  - soundfile
+  - scikit-learn
+  - ffmpeg
+  - pip:
+    - torch
+    - torchaudio
+    - openai-whisper
+    - piper-tts
+    - audiomentations
+    - soundfile
+    - tqdm
+    - pytest

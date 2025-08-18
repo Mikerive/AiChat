@@ -1,0 +1,25 @@
+name: chat_app
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - fastapi
+  - uvicorn
+  - aiosqlite
+  - pydantic
+  - pydantic-core
+  - librosa
+  - soundfile
+  - numpy
+  - onnxruntime
+  - websockets
+  - loguru
+  - requests
+  - pip:
+    - openai-whisper
+    - piper-tts
+    - python-multipart
+    - pytest
+    - pytest-asyncio

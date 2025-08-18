@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 import requests
 import logging
+import os
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -86,12 +87,28 @@ class ChatTab(BaseComponent):
         self.add_widget("play_button", self.play_button)
     
     def refresh_characters(self):
-        """Refresh character list"""
+        """Refresh character list (robust to different backend response shapes)"""
         try:
-            response = requests.get(f"{self.api_base_url}/api/chat/characters")
+            response = requests.get(f"{self.api_base_url}/api/chat/characters", timeout=2.0)
             if response.status_code == 200:
-                characters = response.json().get("characters", [])
-                character_names = [char.get("name", "") for char in characters]
+                data = response.json()
+                
+                # Accept either {"characters": [...]} or a raw list of characters
+                if isinstance(data, dict):
+                    characters = data.get("characters", []) or []
+                elif isinstance(data, list):
+                    characters = data
+                else:
+                    characters = []
+                
+                # Normalize to names (support dict entries or simple strings)
+                character_names = []
+                for char in characters:
+                    if isinstance(char, dict):
+                        character_names.append(char.get("name", "") or str(char.get("id", "")))
+                    else:
+                        character_names.append(str(char))
+                
                 self.character_combo['values'] = character_names
                 if character_names and not self.character_var.get():
                     self.character_var.set(character_names[0])
@@ -108,7 +125,7 @@ class ChatTab(BaseComponent):
         
         try:
             response = requests.post(
-                f"{self.api_base_url}/api/chat",
+                f"{self.api_base_url}/api/chat/chat",
                 json={"text": message, "character": character}
             )
             
@@ -140,16 +157,22 @@ class ChatTab(BaseComponent):
         
         try:
             response = requests.post(
-                f"{self.api_base_url}/api/tts",
+                f"{self.api_base_url}/api/chat/tts",
                 json={"text": text, "character": character}
             )
             
             if response.status_code == 200:
                 result = response.json()
-                audio_path = result.get("audio_path", "")
-                self.audio_path_label.config(text=audio_path)
-                self.play_button.config(state=tk.NORMAL)
-                self.add_log(f"TTS generated: {audio_path}")
+                # Backend returns "audio_file" (filesystem path) — expose via static /audio route
+                audio_file = result.get("audio_file") or result.get("audio_path", "")
+                if audio_file:
+                    audio_basename = os.path.basename(str(audio_file))
+                    audio_url = f"{self.api_base_url}/audio/{audio_basename}"
+                    self.audio_path_label.config(text=audio_url)
+                    self.play_button.config(state=tk.NORMAL)
+                    self.add_log(f"TTS generated: {audio_url}")
+                else:
+                    self.add_log("TTS generated but no audio file returned")
             else:
                 self.add_log(f"TTS error: {response.status_code}")
         except Exception as e:
