@@ -1,431 +1,128 @@
-# VTuber Backend - Reimplementation
+# Character Interactor & Voice Training Toolkit
 
-A comprehensive VTuber streaming backend with voice cloning capabilities, real-time chat functionality, and a debugging GUI interface.
+A local-first toolkit for building, testing, and iterating on interactive character agents and training custom text-to-speech (TTS) voices.
 
-## Features
+This repository provides:
+- A character interactor (persona-driven conversational agent) with conversation memory and profile management.
+- A voice training pipeline for ingesting audio, producing Whisper transcripts, and generating Piper-compatible datasets for fine-tuning.
+- Local STT/TTS integrations (Whisper for speech-to-text, Piper for text-to-speech).
+- REST API and WebSocket event stream for realtime integrations.
+- An optional Tkinter debugging GUI for local control and monitoring.
 
-### Core Functionality
-- **Real-time Chat Interface**: Interactive chat with AI characters
-- **Voice Cloning**: Train custom voice models using your own audio samples
-- **Speech-to-Text**: Whisper integration for transcribing audio input
-- **Text-to-Speech**: Piper integration for generating natural-sounding speech
-- **WebSocket Support**: Real-time updates and event notifications
-- **SQLite Database**: Persistent storage for characters, chat logs, and training data
+Quick links
+- Configuration template: [`.env.example`](.env.example:1)
+- Start backend: [`start_backend.py`](start_backend.py:1)
+- Start GUI: [`start_gui.py`](start_gui.py:1)
+- Voice training pipeline notes: [`src/backend/tts_finetune_app/README.md`](src/backend/tts_finetune_app/README.md:1)
 
-### Debugging & Monitoring
-- **Tkinter GUI**: Comprehensive debugging command center
-- **Real-time Event System**: Live monitoring of all system events
-- **Voice Training Interface**: Upload and manage voice training data
-- **System Status Dashboard**: Monitor system health and performance
-- **Configuration Management**: Easy configuration through GUI
+Installation
 
-## Architecture
+Prerequisites
+- Python 3.8+
+- FFmpeg (for audio extraction)
+- Optional: CUDA-compatible GPU for faster model training/transcription
 
-```
-VTuber Backend
-├── Backend (FastAPI)
-│   ├── API Routes
-│   │   ├── Chat Endpoints
-│   │   ├── Voice Training Endpoints
-│   │   ├── System Endpoints
-│   │   └── WebSocket Support
-│   ├── Services
-│   │   ├── Chat Service
-│   │   ├── Whisper Service (STT)
-│   │   ├── Voice Service (TTS)
-│   │   └── Event System
-│   ├── Database (SQLite)
-│   └── Configuration
-├── Frontend (Tkinter GUI)
-│   ├── System Status Tab
-│   ├── Chat Interface Tab
-│   ├── Voice Training Tab
-│   ├── Event Logs Tab
-│   └── Configuration Tab
-└── Event System
-    ├── WebSocket Notifications
-    ├── Event Logging
-    └── Real-time Updates
-```
-
-## Installation
-
-### Prerequisites
-- Python 3.8 or higher
-- pip package manager
-- Optional: FFmpeg for audio processing
-
-### Setup
-
-1. **Clone the repository**
-   ```bash
+Setup
+1. Clone the repository
    git clone <repository-url>
    cd VtuberMiku
-   ```
 
-2. **Recommended — use the helper scripts**
-   - Linux/macOS (bash):
-     ```bash
-     ./scripts/create_envs.sh
-     ```
-   - Windows (PowerShell):
-     ```powershell
-     .\scripts\create_envs.ps1
-     ```
-   The helper scripts will create a Python virtual environment at `./venv`, upgrade pip, install packages from [`requirements.txt`](requirements.txt:1), and install local editable packages such as `./backend/chat_app` if present.
-
-3. **Manual (alternative) — create a venv and install requirements**
-   ```bash
+2. Create and activate a virtual environment (recommended)
    python -m venv venv
-   source venv/bin/activate    # On Windows (cmd): venv\Scripts\activate
+   venv\Scripts\activate    # Windows (cmd)
+   source venv/bin/activate # macOS / Linux
+
+3. Install dependencies
    python -m pip install --upgrade pip
    pip install -r requirements.txt
-   pip install -e ./backend/chat_app   # for editable development install
-   ```
 
-4. **Configure environment**
-   ```bash
+4. Configure environment
    cp .env.example .env
-   # Edit .env with your configuration
-   ```
+   # Edit `.env` to set API host/port, model paths, and API keys.
 
-5. **Install optional dependencies for enhanced functionality**
-   ```bash
-   # For GPU acceleration (optional)
-   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
-   
-   # For audio source separation (optional)
-   pip install spleeter
-   
-   # For microphone input (optional)
-   pip install pyaudio
-   ```
+Usage
 
-## Usage
+Start the backend (development)
+python start_backend.py
+# or
+python main.py
 
-### Starting the Application
-
-#### Option 1: Start Both Backend and GUI
-```bash
+Start the GUI (optional)
 python start_gui.py
-```
 
-#### Option 2: Start Backend Only
-```bash
-python start_gui.py backend
-```
+Accessing the API
+- OpenAPI docs: http://localhost:8765/docs
+- WebSocket: ws://localhost:8765/api/ws
 
-#### Option 3: Start GUI Only
-```bash
-python start_gui.py gui
-```
+API Overview
 
-### Accessing the Application
+Chat
+- GET /api/chat/characters
+- POST /api/chat
+- POST /api/chat/switch
 
-- **GUI Interface**: Launches automatically when starting the application
-- **API Documentation**: http://localhost:8765/docs
-- **WebSocket Endpoint**: ws://localhost:8765/api/ws
+TTS
+- POST /api/tts
 
-### Configuration
+Voice training
+- POST /api/voice/upload
+- POST /api/voice/train
+- GET /api/voice/models
 
-The application can be configured through:
+System
+- GET /health
+- GET /api/system/status
 
-1. **Environment Variables**: Edit `.env` file
-2. **GUI Interface**: Use the Configuration tab in the GUI
-3. **API Endpoints**: Use `/api/system/config` endpoint
+WebSocket Events
+Subscribe to realtime events (transcription, training progress, chat responses) via `/api/ws`. Clients may send a JSON subscribe message to filter event types.
 
-#### Key Configuration Options
+Voice Training Pipeline
 
-```env
-# API Configuration
-API_HOST=localhost
-API_PORT=8765
+See detailed pipeline and implementation notes in [`src/backend/tts_finetune_app/README.md`](src/backend/tts_finetune_app/README.md:1). In brief:
+- Ingest audio (mp3/mp4), extract WAV with FFmpeg
+- Optional source-separation (Spleeter) to isolate vocals
+- Silence-based clipping, resampling, normalization
+- Whisper transcription to create transcripts and metadata
+- Piper dataset manifest generation and fine-tuning with epoch-level checkpointing
 
-# Audio Settings
-SAMPLE_RATE=16000
-CHANNELS=1
+Configuration
 
-# Model Settings
-WHISPER_MODEL=base
-PIPER_MODEL_PATH=models/piper/en_US-amy-medium.onnx
+Important environment variables (set in `.env` or via your environment):
+- API_HOST, API_PORT, DEBUG
+- DATABASE_URL (default: sqlite:///./vtuber.db)
+- WHISPER_MODEL, PIPER_MODEL_PATH, SAMPLE_RATE
+- LOG_LEVEL, LOG_FILE
+- OPENROUTER_API_KEY (optional; for LLM integration)
 
-# Character Settings
-CHARACTER_NAME=Miku
-CHARACTER_PROFILE=hatsune_miku
-CHARACTER_PERSONALITY=cheerful,curious,helpful
+Development
 
-# Logging
-LOG_LEVEL=INFO
-LOG_FILE=logs/vtuber.log
-```
+- Run tests: pytest
+- Format: black .
+- Lint: flake8 .
+- Type check: mypy .
 
-## API Documentation
+Project structure (high level)
+- backend/: FastAPI application and services
+- src/backend/tts_finetune_app/: voice training pipeline and tools
+- src/frontend/: optional Tkinter GUI
+- tests/: unit and integration tests
+- start_backend.py, start_gui.py: convenience scripts
 
-### Chat Endpoints
-
-#### Get Characters
-```http
-GET /api/chat/characters
-```
-
-#### Send Chat Message
-```http
-POST /api/chat
-Content-Type: application/json
-
-{
-  "text": "Hello, how are you?",
-  "character": "hatsune_miku"
-}
-```
-
-#### Generate TTS
-```http
-POST /api/tts
-Content-Type: application/json
-
-{
-  "text": "Hello, world!",
-  "character": "hatsune_miku"
-}
-```
-
-### Voice Training Endpoints
-
-#### Upload Audio
-```http
-POST /api/voice/upload
-Content-Type: multipart/form-data
-
-file: <audio-file>
-```
-
-#### Start Training
-```http
-POST /api/voice/train
-Content-Type: application/json
-
-{
-  "model_name": "custom_voice",
-  "epochs": 10,
-  "batch_size": 8
-}
-```
-
-#### Get Voice Models
-```http
-GET /api/voice/models
-```
-
-### System Endpoints
-
-#### Health Check
-```http
-GET /health
-```
-
-#### Get System Status
-```http
-GET /api/system/status
-```
-
-#### Get Event Logs
-```http
-GET /api/logs
-```
-
-### WebSocket & Events
-
-Connect to the WebSocket endpoint for real-time updates and system events:
-
-```javascript
-const ws = new WebSocket('ws://localhost:8765/api/ws');
-
-ws.onopen = () => {
-  // Subscribe to specific event-types (optional). If omitted, GUI will receive all events.
-  ws.send(JSON.stringify({
-    type: "subscribe",
-    events: ["audio.transcribed", "audio.captured", "chat.response"]
-  }));
-};
-
-ws.onmessage = (ev) => {
-  const data = JSON.parse(ev.data);
-  console.log('Event:', data);
-  // Typical event payload from the EventSystem (JSON):
-  // {
-  //   "id": 123456,
-  //   "event_type": "audio.transcribed",
-  //   "message": "Speech-to-text transcription completed",
-  //   "data": { "stream_id": "local-...", "text": "Hello" },
-  //   "severity": "INFO",
-  //   "source": null,
-  //   "timestamp": "2025-08-17T22:17:31.536Z"
-  // }
-};
-```
-
-WebSocket subscriptions:
-- Send a JSON message with `type: "subscribe"` and an `events` array to receive only those events.
-- The backend will respect per-client subscriptions and only deliver matching events when present.
-
-Webhook-style event payloads:
-- The internal EventSystem uses a consistent JSON schema (see example above). To forward events to your own webhook receiver, POST JSON with the same schema to your endpoint.
-
-Example external webhook receiver (server) expected JSON schema:
-```json
-{
-  "event_type": "chat.response",
-  "message": "LLM response generated",
-  "data": {
-    "stream_id": "local-123",
-    "character_response": "Hello!",
-    "user_input": "Hi"
-  },
-  "severity": "INFO",
-  "timestamp": "2025-08-17T22:17:31.536Z"
-}
-```
-
-Note: The GUI connects to the backend WebSocket at `/api/ws` and the REST endpoints under `/api/*` (chat, tts, voice, system). See the API Documentation section above for endpoint details.
-
-## GUI Features
-
-### System Status Tab
-- Real-time system monitoring
-- Connection status
-- Service health checks
-- Performance metrics
-
-### Chat Interface Tab
-- Character selection
-- Chat message input
-- TTS generation
-- Audio playback controls
-
-### Voice Training Tab
-- Audio file upload
-- Training progress monitoring
-- Voice model management
-- Training configuration
-
-### Event Logs Tab
-- Real-time event logging
-- Event filtering by severity
-- Auto-refresh functionality
-- Log search capabilities
-
-### Configuration Tab
-- API settings
-- Audio configuration
-- Model settings
-- Character configuration
-
-## Development
-
-### Project Structure
-
-```
-VtuberMiku/
-├── backend/
-│   ├── main.py                 # FastAPI application
-│   ├── api/
-│   │   ├── routes/            # API route definitions
-│   │   └── services/          # Business logic services
-│   └── voice_trainer/         # Voice training components
-├── frontend/
-│   └── gui.py                 # Tkinter GUI application
-├── database.py                # Database models and operations
-├── event_system.py            # Event system and WebSocket handling
-├── config.py                 # Configuration management
-├── requirements.txt          # Python dependencies
-├── start_gui.py              # Startup script
-└── README.md                 # This file
-```
-
-### Running Tests
-
-```bash
-# Install test dependencies
-pip install pytest pytest-asyncio
-
-# Run tests
-pytest
-
-# Run with coverage
-pytest --cov=.
-```
-
-### Code Style
-
-```bash
-# Format code
-black .
-
-# Lint code
-flake8 .
-
-# Type checking
-mypy .
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Port Already in Use**
-   - Change the port in `.env` file
-   - Or kill the process using the port: `netstat -ano | findstr :8765`
-
-2. **Audio Processing Errors**
-   - Install FFmpeg: `choco install ffmpeg` (Windows) or `sudo apt install ffmpeg` (Linux)
-   - Check audio file formats (WAV, MP3, M4A supported)
-
-3. **Model Loading Issues**
-   - Ensure model files exist in the specified paths
-   - Check disk space for model downloads
-   - Verify Python dependencies are installed
-
-4. **WebSocket Connection Issues**
-   - Check firewall settings
-   - Verify the backend is running
-   - Check browser console for errors
-
-### Debug Mode
-
-Enable debug mode for detailed logging:
-
-```env
-DEBUG=true
-LOG_LEVEL=DEBUG
-```
-
-## Contributing
+Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+3. Add tests for new behavior
+4. Open a pull request describing your changes
 
-## License
+License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License — see the LICENSE file
 
-## Acknowledgments
+Acknowledgments
 
-- [FastAPI](https://fastapi.tiangolo.com/) - Modern, fast (high-performance), web framework for building APIs with Python 3.8+ based on standard Python type hints.
-- [Whisper](https://github.com/openai/whisper) - Robust speech recognition by OpenAI
-- [Piper](https://github.com/rhasspy/piper) - A fast, local neural text-to-speech system
-- [Tkinter](https://docs.python.org/3/library/tkinter.html) - Python's standard GUI toolkit
+- FastAPI, Whisper, Piper, Tkinter
 
-## Support
+Note
 
-For support and questions:
-- Create an issue in the repository
-- Check the troubleshooting section
-- Review the API documentation at `/docs`
-
----
-
-**Note**: This is a reimplementation of a VTuber streaming backend. Some features may require additional setup or dependencies for full functionality.
+This project was previously named and organized around VTuber use cases. It has been refocused to serve as a general-purpose Character Interactor and Voice Training Toolkit. Please update any tooling, documentation, or downstream references that still use the "VTuber" name.

@@ -214,7 +214,11 @@ class EventSystem:
                     logger.error(f"Error in global event callback: {e}")
             
             # Notify WebSocket connections
-            await self._notify_websockets(event)
+            # NOTE: WebSocket broadcasting is handled by external subscribers (e.g. the
+            # websocket route registers a global subscriber that forwards events to the
+            # ConnectionManager.broadcast() method and respects per-client subscriptions).
+            # Calling _notify_websockets here would bypass subscription filtering, so we
+            # avoid doing so to ensure clients only receive events they subscribed to.
             
             # Forward to registered webhook URLs (fire-and-forget).
             # Use event.to_dict() so external receivers get structured JSON.
@@ -295,20 +299,20 @@ class EventSystem:
     
     async def add_websocket_connection(self, websocket):
         """Add WebSocket connection for real-time updates"""
+        # Register connection but do not emit a system-wide "connected" event here.
+        # Emitting such events at this point can race with per-connection protocol
+        # messages (like subscription acks) and cause clients to receive events
+        # they did not expect. If callers want to emit a connection event, they
+        # can do so explicitly after subscription is established.
         self.websocket_connections.append(websocket)
         logger.info(f"WebSocket connection added. Total: {len(self.websocket_connections)}")
-        
-        # Send connection event
-        await self.emit(EventType.WEBSOCKET_CONNECTED, "WebSocket client connected")
     
     async def remove_websocket_connection(self, websocket):
         """Remove WebSocket connection"""
         if websocket in self.websocket_connections:
             self.websocket_connections.remove(websocket)
             logger.info(f"WebSocket connection removed. Total: {len(self.websocket_connections)}")
-            
-            # Send disconnection event
-            await self.emit(EventType.WEBSOCKET_DISCONNECTED, "WebSocket client disconnected")
+            # Do not emit a disconnection event here for the same reason as connect.
     
     async def _log_event(self, event: Event):
         """Log event to database and memory"""

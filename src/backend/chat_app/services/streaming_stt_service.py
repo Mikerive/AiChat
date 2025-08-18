@@ -204,6 +204,7 @@ def feed_audio(stream_id: str, wav_bytes: bytes) -> Optional[str]:
             "chunks": [],
             "sr": sr,
             "last_voice_time": 0.0,
+            "last_voice_sample": 0,
             "last_input_time": now,
             "rms_history": deque(maxlen=RMS_HISTORY_LENGTH)
         }
@@ -220,32 +221,54 @@ def feed_audio(stream_id: str, wav_bytes: bytes) -> Optional[str]:
     # Compute RMS for this chunk and update history
     chunk_rms = _rms(data)
     sess["rms_history"].append(chunk_rms)
-
+    
     # Estimate noise statistics from RMS history.
     # Use median/mean and stddev for robustness.
     rms_vals = np.array(list(sess["rms_history"])) if sess["rms_history"] else np.array([0.0])
     noise_mean = float(np.mean(rms_vals))
     noise_std = float(np.std(rms_vals, ddof=1)) if rms_vals.size > 1 else 0.0
-
+    
     # Determine voice presence: chunk is voice if its RMS exceeds noise_mean + k * noise_std
     is_voice = False
+    threshold = None
     if noise_std > 0:
         threshold = noise_mean + (STD_DEV_MULTIPLIER * noise_std)
         is_voice = (chunk_rms >= threshold)
     else:
         # fallback to absolute RMS threshold when insufficient history
+        threshold = RMS_VOICE_THRESHOLD
         is_voice = (chunk_rms >= RMS_VOICE_THRESHOLD)
-
-    if is_voice:
-        sess["last_voice_time"] = now
-
-    # Compute total duration so far
+    
+    # Debug logging for VAD decision (elevated to INFO during tests so it's visible)
+    logger.info(
+        "STT VAD stream=%s chunk_rms=%.6f noise_mean=%.6f noise_std=%.6f threshold=%s is_voice=%s chunks=%d",
+        stream_id, chunk_rms, noise_mean, noise_std, f"{threshold:.6f}" if isinstance(threshold, float) else str(threshold),
+        is_voice, len(sess["chunks"])
+    )
+    
+    # Update last_voice_sample (audio-based position) when voice detected.
+    # Compute total duration so far (in audio time)
     total_samples = sum(arr.shape[0] for arr in sess["chunks"])
     total_duration = total_samples / float(sess["sr"]) if sess["sr"] else 0.0
 
-    # If we've seen voice and silence period exceeded and utterance long enough -> finalize
-    time_since_voice = now - sess["last_voice_time"] if sess["last_voice_time"] else float("inf")
-    if sess["last_voice_time"] and time_since_voice >= SILENCE_DURATION and total_duration >= MIN_UTTERANCE_DURATION:
+    if is_voice:
+        sess["last_voice_time"] = now
+        sess["last_voice_sample"] = total_samples
+
+    # Determine silence length in audio time (seconds since last voice sample)
+    samples_since_voice = total_samples - sess.get("last_voice_sample", 0)
+    seconds_since_voice_audio = samples_since_voice / float(sess["sr"]) if sess["sr"] else float("inf")
+
+    # Also compute wall-clock silence for diagnostics
+    time_since_wall_clock = now - (sess["last_voice_time"] if sess["last_voice_time"] else sess["last_input_time"])
+
+    logger.info(
+        "STT session stream=%s total_duration=%.3fs seconds_since_voice_audio=%.3fs time_since_wall_clock=%.3fs chunks=%d",
+        stream_id, total_duration, seconds_since_voice_audio, time_since_wall_clock, len(sess["chunks"])
+    )
+
+    # Finalize when audio-silence exceeds threshold (preferred) and utterance is long enough.
+    if seconds_since_voice_audio >= SILENCE_DURATION and total_duration >= MIN_UTTERANCE_DURATION:
         # Concatenate and write to a temp WAV file
         try:
             concatenated = np.concatenate(sess["chunks"]) if len(sess["chunks"]) > 1 else sess["chunks"][0]
@@ -263,7 +286,7 @@ def feed_audio(stream_id: str, wav_bytes: bytes) -> Optional[str]:
             # attempt cleanup
             _SESSIONS.pop(stream_id, None)
             return None
-
+    
     # Not finalized yet
     return None
 

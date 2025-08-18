@@ -16,7 +16,8 @@ T = TypeVar('T')
 @dataclass
 class ServiceConfig:
     """Base configuration for services"""
-    name: str
+    # Make name optional with a sensible default so callers can omit it.
+    name: str = ""
     singleton: bool = True
     max_idle_time: int = 3600  # 1 hour
     cleanup_on_dispose: bool = True
@@ -30,7 +31,8 @@ class WhisperConfig(ServiceConfig):
     mock: bool = False
     
     def __post_init__(self):
-        if not hasattr(self, 'name'):
+        # If no explicit name supplied, derive a default
+        if not getattr(self, "name", None):
             self.name = f"whisper_{self.model_name}_{self.device}"
 
 
@@ -40,7 +42,7 @@ class VoiceConfig(ServiceConfig):
     piper_model_path: Optional[str] = None
     
     def __post_init__(self):
-        if not hasattr(self, 'name'):
+        if not getattr(self, "name", None):
             self.name = "voice_service"
 
 
