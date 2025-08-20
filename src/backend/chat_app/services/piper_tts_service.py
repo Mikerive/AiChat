@@ -18,6 +18,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from constants.paths import PIPER_MODELS, AUDIO_OUTPUT, ensure_dirs
 
 from event_system import get_event_system, EventType, EventSeverity
+from .audio_io_service import AudioIOService, AudioConfig
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,9 @@ logger = logging.getLogger(__name__)
 class PiperTTSService:
     """Service for generating speech using Piper TTS"""
     
-    def __init__(self):
+    def __init__(self, audio_io_service: Optional[AudioIOService] = None):
         self.event_system = get_event_system()
+        self.audio_io = audio_io_service or AudioIOService()
         self.models_path = PIPER_MODELS
         self.output_path = AUDIO_OUTPUT
         self.piper_executable = self._find_piper_executable()
@@ -54,7 +56,7 @@ class PiperTTSService:
         
         for path in possible_paths:
             try:
-                result = subprocess.run([path, "--version"], 
+                result = subprocess.run([path, "--help"], 
                                       capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
                     logger.info(f"Found Piper executable at: {path}")
@@ -292,7 +294,7 @@ class PiperTTSService:
                 # Try to read config for additional info
                 if config_file.exists():
                     try:
-                        with open(config_file, 'r') as f:
+                        with open(config_file, 'r', encoding='utf-8') as f:
                             config = json.load(f)
                             voice_info.update({
                                 "language": config.get("language", "unknown"),
@@ -334,10 +336,24 @@ class PiperTTSService:
             logger.error(f"Error testing voice {voice}: {e}")
             return None
     
+    async def play_generated_audio(self, audio_path: Path) -> bool:
+        """Play generated audio using AudioIOService"""
+        try:
+            if not audio_path or not audio_path.exists():
+                logger.error(f"Audio file not found: {audio_path}")
+                return False
+            
+            return await self.audio_io.play_audio(audio_path)
+            
+        except Exception as e:
+            logger.error(f"Error playing generated audio: {e}")
+            return False
+
     async def get_service_status(self) -> Dict[str, Any]:
         """Get TTS service status"""
         try:
             available_voices = await self.get_available_voices()
+            audio_status = await self.audio_io.get_service_status()
             
             return {
                 "piper_available": self.piper_executable is not None,
@@ -346,7 +362,8 @@ class PiperTTSService:
                 "output_path": str(self.output_path),
                 "available_voices": len(available_voices),
                 "default_voice": self.default_voice,
-                "status": "ready" if self.piper_executable else "fallback_mode"
+                "status": "ready" if self.piper_executable else "fallback_mode",
+                "audio_io": audio_status
             }
             
         except Exception as e:

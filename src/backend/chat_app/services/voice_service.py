@@ -8,6 +8,7 @@ from constants.paths import AUDIO_OUTPUT, TTS_MODELS_DIR, ensure_dirs
 from typing import Dict, Any, Optional
  
 from event_system import get_event_system, EventType, EventSeverity
+from .audio_io_service import AudioIOService, AudioConfig
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +16,9 @@ logger = logging.getLogger(__name__)
 class VoiceService:
     """Service for handling voice training and TTS functionality"""
     
-    def __init__(self):
+    def __init__(self, audio_io_service: Optional[AudioIOService] = None):
         self.event_system = get_event_system()
+        self.audio_io = audio_io_service or AudioIOService()
         self.piper_model = None
         self._initialize_piper()
     
@@ -321,6 +323,7 @@ class VoiceService:
         """Get voice service status"""
         try:
             models = await self.get_available_models()
+            audio_status = await self.audio_io.get_service_status()
             
             return {
                 "status": "active",
@@ -331,7 +334,8 @@ class VoiceService:
                     "tts": "ready",
                     "training": "ready",
                     "processing": "ready"
-                }
+                },
+                "audio_io": audio_status
             }
         except Exception as e:
             logger.error(f"Error getting voice service status: {e}")

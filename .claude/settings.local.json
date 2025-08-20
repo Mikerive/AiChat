@@ -13,7 +13,11 @@
       "Bash(powershell:*)",
       "Bash(curl:*)",
       "Bash(API_PORT=8766 python \"src/frontend/gui.py\")",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(piper:*)",
+      "Bash(wget:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(pytest:*)"
     ],
     "deny": [],
     "ask": []

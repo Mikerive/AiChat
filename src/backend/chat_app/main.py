@@ -19,6 +19,7 @@ from database import get_db, DatabaseManager
 from event_system import get_event_system, EventType, EventSeverity
 from backend.chat_app.routes import voice, system, chat, websocket
 from backend.chat_app.utils.logging_config import setup_logging
+from backend.chat_app.services.audio_io_service import AudioIOService
 from logs_app.routes import router as logs_router
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,21 @@ async def get_event_system_instance() -> AsyncGenerator[None, None]:
     event_system = get_event_system()
     try:
         yield event_system
+    finally:
+        pass
+
+
+# Global AudioIOService instance
+_audio_io_service = None
+
+
+async def get_audio_io_service() -> AsyncGenerator[AudioIOService, None]:
+    """Audio I/O service dependency"""
+    global _audio_io_service
+    if _audio_io_service is None:
+        _audio_io_service = AudioIOService()
+    try:
+        yield _audio_io_service
     finally:
         pass
 

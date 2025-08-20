@@ -60,3 +60,6 @@ Thumbs.db
 
 # Node
 node_modules/
+
+# Voice model
+*.onnx*

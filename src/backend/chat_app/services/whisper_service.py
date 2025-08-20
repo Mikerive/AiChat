@@ -17,6 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from constants.paths import TEMP_AUDIO_DIR, ensure_dirs
 
 from event_system import get_event_system, EventType, EventSeverity
+from .audio_io_service import AudioIOService, AudioConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +25,11 @@ logger = logging.getLogger(__name__)
 class WhisperService:
     """Service for handling Whisper speech-to-text functionality"""
     
-    def __init__(self, model_name: str = "base"):
+    def __init__(self, model_name: str = "base", audio_io_service: Optional[AudioIOService] = None):
         self.model_name = model_name
         self.model = None
         self.event_system = get_event_system()
+        self.audio_io = audio_io_service or AudioIOService()
         self._initialized = False
         self._initialize_model()
     
@@ -202,26 +204,40 @@ class WhisperService:
             return self._get_mock_transcription(Path("mock"))
     
     async def transcribe_microphone(self, duration: float = 5.0) -> Dict[str, Any]:
-        """Transcribe microphone input (placeholder implementation)"""
+        """Transcribe microphone input using AudioIOService"""
         try:
-            # This would normally use PyAudio or similar to capture microphone input
-            # For now, return mock transcription
-            mock_text = "This is a mock transcription from microphone input. In a real implementation, this would capture audio from the microphone and transcribe it."
+            # Record audio from microphone using AudioIOService
+            audio_path = await self.audio_io.record_audio(duration)
             
-            await self.event_system.emit(
-                EventType.AUDIO_CAPTURED,
-                "Microphone audio captured",
-                {"duration": duration}
-            )
-            
-            return {
-                "text": mock_text,
-                "language": "en",
-                "confidence": 0.90,
-                "processing_time": 2.0,
-                "duration": duration,
-                "mock": True
-            }
+            if audio_path and audio_path.exists():
+                # Transcribe the recorded audio
+                result = await self.transcribe_audio(audio_path)
+                
+                # Clean up temporary file
+                try:
+                    audio_path.unlink()
+                except Exception:
+                    pass
+                
+                return result
+            else:
+                # Fall back to mock transcription if recording failed
+                mock_text = "This is a mock transcription from microphone input. AudioIOService recording may not be available."
+                
+                await self.event_system.emit(
+                    EventType.AUDIO_CAPTURED,
+                    "Microphone audio captured (mock)",
+                    {"duration": duration}
+                )
+                
+                return {
+                    "text": mock_text,
+                    "language": "en",
+                    "confidence": 0.90,
+                    "processing_time": 2.0,
+                    "duration": duration,
+                    "mock": True
+                }
             
         except Exception as e:
             logger.error(f"Error transcribing microphone: {e}")

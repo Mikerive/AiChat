@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     channels: int = Field(default=1, env="CHANNELS")
     vad_mode: int = Field(default=2, env="VAD_MODE")
     speech_timeout: float = Field(default=1.0, env="SPEECH_TIMEOUT")
+    audio_input_device_id: Optional[int] = Field(default=None, env="AUDIO_INPUT_DEVICE_ID")
+    audio_output_device_id: Optional[int] = Field(default=None, env="AUDIO_OUTPUT_DEVICE_ID")
+    audio_volume: float = Field(default=1.0, env="AUDIO_VOLUME")
+    audio_chunk_size: int = Field(default=1024, env="AUDIO_CHUNK_SIZE")
     
     # Model Configuration
     whisper_model: str = Field(default="base", env="WHISPER_MODEL")
@@ -126,6 +130,10 @@ class Settings(BaseSettings):
             "channels": self.channels,
             "vad_mode": self.vad_mode,
             "speech_timeout": self.speech_timeout,
+            "input_device_id": self.audio_input_device_id,
+            "output_device_id": self.audio_output_device_id,
+            "volume": self.audio_volume,
+            "chunk_size": self.audio_chunk_size,
         }
     
     def get_model_config(self) -> Dict[str, Any]:
