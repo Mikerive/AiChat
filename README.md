@@ -1,357 +1,87 @@
-# AiChat Backend - Reimplementation
+# Character Interactor & Voice Training Toolkit
 
-A comprehensive VTuber streaming backend with voice cloning capabilities, real-time chat functionality, and a debugging GUI interface.
+Lightweight, local-first toolkit for building and iterating on persona-driven character agents and training custom text-to-speech (TTS) voices. The codebase combines a FastAPI backend (chat, TTS orchestration, voice fine-tuning hooks), an optional Tkinter debug GUI, and a voice finetune pipeline.
 
-## Features
+Overview
+- Character interactor: persona management, chat endpoints, conversation memory.
+- Voice training pipeline: ingest → segmentation → transcription → Piper manifest → fine-tune.
+- REST API and WebSocket event stream for realtime integrations.
+- Optional local GUI for monitoring and control.
 
-### Core Functionality
-- **Real-time Chat Interface**: Interactive chat with AI characters
-- **Voice Cloning**: Train custom voice models using your own audio samples
-- **Speech-to-Text**: Whisper integration for transcribing audio input
-- **Text-to-Speech**: Piper integration for generating natural-sounding speech
-- **WebSocket Support**: Real-time updates and event notifications
-- **SQLite Database**: Persistent storage for characters, chat logs, and training data
+Quickstart
 
-### Debugging & Monitoring
-- **Tkinter GUI**: Comprehensive debugging command center
-- **Real-time Event System**: Live monitoring of all system events
-- **Voice Training Interface**: Upload and manage voice training data
-- **System Status Dashboard**: Monitor system health and performance
-- **Configuration Management**: Easy configuration through GUI
+Prerequisites
+- Python 3.8+
+- FFmpeg (for audio extraction)
+- Optional: CUDA-capable GPU for faster Whisper / PyTorch operations
 
-## Architecture
-
-```
-VTuber Backend
-├── Backend (FastAPI)
-│   ├── API Routes
-│   │   ├── Chat Endpoints
-│   │   ├── Voice Training Endpoints
-│   │   ├── System Endpoints
-│   │   └── WebSocket Support
-│   ├── Services
-│   │   ├── Chat Service
-│   │   ├── Whisper Service (STT)
-│   │   ├── Voice Service (TTS)
-│   │   └── Event System
-│   ├── Database (SQLite)
-│   └── Configuration
-├── Frontend (Tkinter GUI)
-│   ├── System Status Tab
-│   ├── Chat Interface Tab
-│   ├── Voice Training Tab
-│   ├── Event Logs Tab
-│   └── Configuration Tab
-└── Event System
-    ├── WebSocket Notifications
-    ├── Event Logging
-    └── Real-time Updates
-```
-
-## Installation
-
-### Prerequisites
-- Python 3.8 or higher
-- pip package manager
-- Optional: FFmpeg for audio processing
-
-### Setup
-
-1. **Clone the repository**
-   ```bash
+Install
+1. Clone the repository
    git clone <repository-url>
-   cd VtuberMiku
-   ```
 
-2. **Create virtual environment**
-   ```bash
+2. Create virtual environment
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+   venv\Scripts\activate    # Windows (cmd)
+   source venv/bin/activate # macOS / Linux
 
-3. **Install dependencies**
-   ```bash
+3. Install dependencies
+   python -m pip install --upgrade pip
    pip install -r requirements.txt
-   ```
 
-4. **Configure environment**
-   ```bash
+4. Configure environment
    cp .env.example .env
-   # Edit .env with your configuration
-   ```
+   # Edit `.env` for API_HOST, API_PORT, model paths, and keys (see [`src/config.py`](src/config.py:1))
 
-5. **Install optional dependencies for enhanced functionality**
-   ```bash
-   # For GPU acceleration (optional)
-   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
-   
-   # For audio source separation (optional)
-   pip install spleeter
-   
-   # For microphone input (optional)
-   pip install pyaudio
-   ```
+Running the project
 
-## Usage
+Start backend (recommended; runs FastAPI)
+python start_backend.py
 
-### Starting the Application
+Developer alternative (runs uvicorn from src)
+cd src
+python -m uvicorn backend.chat_app.main:create_app --factory --host localhost --port 8765 --reload
 
-#### Option 1: Start Both Backend and GUI
-```bash
+Start GUI (optional)
 python start_gui.py
-```
 
-#### Option 2: Start Backend Only
-```bash
-python start_gui.py backend
-```
+API & WebSocket
+- OpenAPI docs: http://localhost:8765/docs
+- WebSocket endpoint: ws://localhost:8765/api/ws
 
-#### Option 3: Start GUI Only
-```bash
-python start_gui.py gui
-```
+Repository layout (high level)
 
-### Accessing the Application
+Top-level
+- [`start_backend.py`](start_backend.py:1) — convenience script to start backend
+- [`start_gui.py`](start_gui.py:1) — convenience script to start GUI
+- [`main.py`](main.py:1) — main entrypoint used in some launch modes
+- [`requirements.txt`](requirements.txt:1)
+- [`README_STARTUP.md`](README_STARTUP.md:1) — startup notes and tips
 
-- **GUI Interface**: Launches automatically when starting the application
-- **API Documentation**: http://localhost:8765/docs
-- **WebSocket Endpoint**: ws://localhost:8765/api/ws
+Source (src/)
+- [`src/backend/chat_app/`](src/backend/chat_app:1) — FastAPI application, routes, and services
+  - routes: [`src/backend/chat_app/routes/`](src/backend/chat_app/routes:1)
+  - services: [`src/backend/chat_app/services/`](src/backend/chat_app/services:1)
+  - audio & model assets: [`src/backend/chat_app/audio/`](src/backend/chat_app/audio:1)
+- [`src/backend/tts_finetune_app/`](src/backend/tts_finetune_app:1) — TTS finetune pipeline (processors, scripts, training_data)
+  - Read the pipeline notes at [`src/backend/tts_finetune_app/README.md`](src/backend/tts_finetune_app/README.md:1)
+- [`src/frontend/`](src/frontend:1) — optional Tkinter GUI and components (see [`src/frontend/gui.py`](src/frontend/gui.py:1))
+- Configuration and utilities: [`src/config.py`](src/config.py:1), [`src/database.py`](src/database.py:1), [`src/event_system.py`](src/event_system.py:1)
 
-### Configuration
+Key implementation notes
+- Voice training and manifests are expected under `backend/tts_finetune_app/` (paths referenced throughout routes and services).
+  - training data: [`backend/tts_finetune_app/training_data/`](backend/tts_finetune_app/training_data:1)
+  - model outputs: [`backend/tts_finetune_app/models/`](backend/tts_finetune_app/models:1)
+- Piper runtime models are stored under [`backend/chat_app/audio/piper_models`](backend/chat_app/audio/piper_models:1) and generated audio is written to [`backend/chat_app/audio/generated`](backend/chat_app/audio/generated:1).
+- Several route handlers reference the tts finetune locations — if you rename/move the TTS folder, update references in `src/backend/chat_app/routes/voice.py` and associated services.
 
-The application can be configured through:
+Development
+- Run tests: pytest
+- Format: black .
+- Lint: flake8 .
+- Type check: mypy .
 
-1. **Environment Variables**: Edit `.env` file
-2. **GUI Interface**: Use the Configuration tab in the GUI
-3. **API Endpoints**: Use `/api/system/config` endpoint
-
-#### Key Configuration Options
-
-```env
-# API Configuration
-API_HOST=localhost
-API_PORT=8765
-
-# Audio Settings
-SAMPLE_RATE=16000
-CHANNELS=1
-
-# Model Settings
-WHISPER_MODEL=base
-PIPER_MODEL_PATH=models/piper/en_US-amy-medium.onnx
-
-# Character Settings
-CHARACTER_NAME=Miku
-CHARACTER_PROFILE=hatsune_miku
-CHARACTER_PERSONALITY=cheerful,curious,helpful
-
-# Logging
-LOG_LEVEL=INFO
-LOG_FILE=logs/vtuber.log
-```
-
-## API Documentation
-
-### Chat Endpoints
-
-#### Get Characters
-```http
-GET /api/chat/characters
-```
-
-#### Send Chat Message
-```http
-POST /api/chat
-Content-Type: application/json
-
-{
-  "text": "Hello, how are you?",
-  "character": "hatsune_miku"
-}
-```
-
-#### Generate TTS
-```http
-POST /api/tts
-Content-Type: application/json
-
-{
-  "text": "Hello, world!",
-  "character": "hatsune_miku"
-}
-```
-
-### Voice Training Endpoints
-
-#### Upload Audio
-```http
-POST /api/voice/upload
-Content-Type: multipart/form-data
-
-file: <audio-file>
-```
-
-#### Start Training
-```http
-POST /api/voice/train
-Content-Type: application/json
-
-{
-  "model_name": "custom_voice",
-  "epochs": 10,
-  "batch_size": 8
-}
-```
-
-#### Get Voice Models
-```http
-GET /api/voice/models
-```
-
-### System Endpoints
-
-#### Health Check
-```http
-GET /health
-```
-
-#### Get System Status
-```http
-GET /api/system/status
-```
-
-#### Get Event Logs
-```http
-GET /api/system/logs
-```
-
-### WebSocket
-
-Connect to the WebSocket endpoint for real-time updates:
-
-```javascript
-const ws = new WebSocket('ws://localhost:8765/api/ws');
-
-ws.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    console.log('Event:', data);
-};
-```
-
-## GUI Features
-
-### System Status Tab
-- Real-time system monitoring
-- Connection status
-- Service health checks
-- Performance metrics
-
-### Chat Interface Tab
-- Character selection
-- Chat message input
-- TTS generation
-- Audio playback controls
-
-### Voice Training Tab
-- Audio file upload
-- Training progress monitoring
-- Voice model management
-- Training configuration
-
-### Event Logs Tab
-- Real-time event logging
-- Event filtering by severity
-- Auto-refresh functionality
-- Log search capabilities
-
-### Configuration Tab
-- API settings
-- Audio configuration
-- Model settings
-- Character configuration
-
-## Development
-
-### Project Structure
-
-```
-VtuberMiku/
-├── backend/
-│   ├── main.py                 # FastAPI application
-│   ├── api/
-│   │   ├── routes/            # API route definitions
-│   │   └── services/          # Business logic services
-│   └── voice_trainer/         # Voice training components
-├── frontend/
-│   └── gui.py                 # Tkinter GUI application
-├── database.py                # Database models and operations
-├── event_system.py            # Event system and WebSocket handling
-├── config.py                 # Configuration management
-├── requirements.txt          # Python dependencies
-├── start_gui.py              # Startup script
-└── README.md                 # This file
-```
-
-### Running Tests
-
-```bash
-# Install test dependencies
-pip install pytest pytest-asyncio
-
-# Run tests
-pytest
-
-# Run with coverage
-pytest --cov=.
-```
-
-### Code Style
-
-```bash
-# Format code
-black .
-
-# Lint code
-flake8 .
-
-# Type checking
-mypy .
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Port Already in Use**
-   - Change the port in `.env` file
-   - Or kill the process using the port: `netstat -ano | findstr :8765`
-
-2. **Audio Processing Errors**
-   - Install FFmpeg: `choco install ffmpeg` (Windows) or `sudo apt install ffmpeg` (Linux)
-   - Check audio file formats (WAV, MP3, M4A supported)
-
-3. **Model Loading Issues**
-   - Ensure model files exist in the specified paths
-   - Check disk space for model downloads
-   - Verify Python dependencies are installed
-
-4. **WebSocket Connection Issues**
-   - Check firewall settings
-   - Verify the backend is running
-   - Check browser console for errors
-
-### Debug Mode
-
-Enable debug mode for detailed logging:
-
-```env
-DEBUG=true
-LOG_LEVEL=DEBUG
-```
-
-## Contributing
-
-1. Fork the repository
+Contributing
+1. Fork the repo
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable

@@ -5,7 +5,19 @@
       "Bash(mv:*)",
       "Bash(cp:*)",
       "Bash(mkdir:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(API_PORT=8766 python \"backend/main.py\")",
+      "Bash(tasklist:*)",
+      "Bash(powershell:*)",
+      "Bash(curl:*)",
+      "Bash(API_PORT=8766 python \"src/frontend/gui.py\")",
+      "Bash(timeout:*)",
+      "Bash(piper:*)",
+      "Bash(wget:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(pytest:*)"
     ],
     "deny": [],
     "ask": []
