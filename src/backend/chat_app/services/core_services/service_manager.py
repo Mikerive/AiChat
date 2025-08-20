@@ -46,6 +46,36 @@ class VoiceConfig(ServiceConfig):
             self.name = "voice_service"
 
 
+@dataclass
+class DiscordConfig(ServiceConfig):
+    """Configuration for Discord service"""
+    bot_token: Optional[str] = None
+    guild_id: Optional[int] = None
+    voice_channel_id: Optional[int] = None
+    auto_join_voice: bool = True
+    record_audio: bool = True
+    track_speaking: bool = True
+    
+    def __post_init__(self):
+        if not getattr(self, "name", None):
+            self.name = "discord_service"
+
+
+@dataclass
+class VADConfig(ServiceConfig):
+    """Configuration for VAD service"""
+    sensitivity: str = "medium"  # low, medium, high
+    sample_rate: int = 16000
+    min_speech_duration: float = 0.3
+    max_silence_duration: float = 1.0
+    enable_preprocessing: bool = True
+    save_speech_segments: bool = True
+    
+    def __post_init__(self):
+        if not getattr(self, "name", None):
+            self.name = "vad_service"
+
+
 class ServiceFactory:
     """Factory for creating services with dependency injection"""
     
@@ -66,6 +96,8 @@ class ServiceFactory:
             'piper_tts': self._create_piper_tts_service,
             'openrouter': self._create_openrouter_service,
             'tts_finetune': self._create_tts_finetune_service,
+            'discord': self._create_discord_service,
+            'vad': self._create_vad_service,
         })
     
     def get_service(self, service_type: str, config: ServiceConfig = None) -> Any:
@@ -142,6 +174,44 @@ class ServiceFactory:
         from ..tts_services.tts_finetune_service import TTSFinetuneService
         return TTSFinetuneService()
     
+    def _create_discord_service(self, config: DiscordConfig):
+        """Factory function for DiscordService"""
+        from ..io_services.discord_service import DiscordService, DiscordConfig as DiscordServiceConfig
+        
+        # Convert ServiceConfig to DiscordServiceConfig
+        discord_config = DiscordServiceConfig(
+            bot_token=config.bot_token,
+            guild_id=config.guild_id,
+            voice_channel_id=config.voice_channel_id,
+            auto_join_voice=config.auto_join_voice,
+            record_audio=config.record_audio,
+            track_speaking=config.track_speaking
+        )
+        return DiscordService(discord_config)
+    
+    def _create_vad_service(self, config: VADConfig):
+        """Factory function for VADService"""
+        from ..audio_services.vad_service import VADService, VADConfig as VADServiceConfig, VADSensitivity
+        
+        # Convert sensitivity string to enum
+        sensitivity_map = {
+            "low": VADSensitivity.LOW,
+            "medium": VADSensitivity.MEDIUM,
+            "high": VADSensitivity.HIGH
+        }
+        sensitivity = sensitivity_map.get(config.sensitivity.lower(), VADSensitivity.MEDIUM)
+        
+        # Convert ServiceConfig to VADServiceConfig
+        vad_config = VADServiceConfig(
+            sensitivity=sensitivity,
+            sample_rate=config.sample_rate,
+            min_speech_duration=config.min_speech_duration,
+            max_silence_duration=config.max_silence_duration,
+            enable_preprocessing=config.enable_preprocessing,
+            save_speech_segments=config.save_speech_segments
+        )
+        return VADService(vad_config)
+    
     def _get_default_config(self, service_type: str) -> ServiceConfig:
         """Get default configuration for service type"""
         defaults = {
@@ -151,6 +221,8 @@ class ServiceFactory:
             'piper_tts': ServiceConfig(name="piper_tts_default"),
             'openrouter': ServiceConfig(name="openrouter_default"),
             'tts_finetune': ServiceConfig(name="tts_finetune_default"),
+            'discord': DiscordConfig(name="discord_default"),
+            'vad': VADConfig(name="vad_default"),
         }
         
         if service_type not in defaults:
@@ -270,3 +342,15 @@ def get_openrouter_service() -> Any:
 def get_tts_finetune_service() -> Any:
     """Get TTSFinetuneService with default configuration"""
     return get_service_factory().get_service('tts_finetune')
+
+
+def get_discord_service(bot_token: Optional[str] = None, voice_channel_id: Optional[int] = None) -> Any:
+    """Get DiscordService with optional configuration"""
+    config = DiscordConfig(bot_token=bot_token, voice_channel_id=voice_channel_id)
+    return get_service_factory().get_service('discord', config)
+
+
+def get_vad_service(sensitivity: str = "medium") -> Any:
+    """Get VADService with optional configuration"""
+    config = VADConfig(sensitivity=sensitivity)
+    return get_service_factory().get_service('vad', config)
