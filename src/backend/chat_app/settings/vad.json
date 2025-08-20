@@ -1,0 +1,15 @@
+{
+  "webrtc_aggressiveness": 2,
+  "webrtc_frame_duration_ms": 20,
+  "energy_threshold_db": -40.0,
+  "min_speech_duration_ms": 300,
+  "max_silence_duration_ms": 1000,
+  "sensitivity_preset": "MEDIUM",
+  "save_speech_segments": true,
+  "max_concurrent_sources": 50,
+  "_metadata": {
+    "version": "1.0",
+    "last_modified": "2025-01-20T12:40:00.000Z",
+    "source": "default"
+  }
+}

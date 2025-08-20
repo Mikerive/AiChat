@@ -36,6 +36,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 try:
     from event_system import get_event_system, EventType, EventSeverity
     from constants.paths import TEMP_AUDIO_DIR, ensure_dirs
+    from models import vad_model, settings_dao
 except ImportError:
     # Fallback for when imports aren't available
     TEMP_AUDIO_DIR = Path("temp_audio")
@@ -56,12 +57,38 @@ except ImportError:
     
     class EventSeverity:
         ERROR = "error"
+    
+    # Mock constants if not available
+    class MockVADConstants:
+        energy_threshold_db = -40.0
+        min_speech_duration_ms = 300
+        max_silence_duration_ms = 1000
+        webrtc_frame_duration_ms = 20
+        webrtc_aggressiveness = 2
+        def get_effective_energy_threshold(self): return self.energy_threshold_db
+        def get_webrtc_aggressiveness(self): return self.webrtc_aggressiveness
+        def get_timing_config(self): return {
+            'min_speech_duration': self.min_speech_duration_ms / 1000.0,
+            'max_silence_duration': self.max_silence_duration_ms / 1000.0
+        }
+    
+    vad_model = MockVADConstants()
+    settings_dao = None
 
 logger = logging.getLogger(__name__)
 
 
+# Import VADSensitivityPreset from constants, keep legacy enum for compatibility
+try:
+    from constants.vad_constants import VADSensitivityPreset
+except ImportError:
+    class VADSensitivityPreset:
+        LOW = "low"
+        MEDIUM = "medium" 
+        HIGH = "high"
+
 class VADSensitivity(Enum):
-    """Voice Activity Detection sensitivity levels"""
+    """Voice Activity Detection sensitivity levels (legacy compatibility)"""
     LOW = 0      # Less sensitive, fewer false positives
     MEDIUM = 1   # Balanced
     HIGH = 2     # More sensitive, catches quiet speech

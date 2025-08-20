@@ -1,0 +1,24 @@
+{
+  "sample_rate": 16000,
+  "channels": 1,
+  "bit_depth": 16,
+  "quality_preset": "MEDIUM",
+  "frame_size_ms": 20,
+  "enable_noise_suppression": true,
+  "enable_auto_gain_control": true,
+  "output_format": "wav",
+  "temp_file_cleanup": true,
+  "input_buffer_duration_s": 5.0,
+  "max_buffer_memory_mb": 100,
+  "discord_sample_rate": 48000,
+  "discord_frame_size": 960,
+  "discord_channels": 2,
+  "transcription_sample_rate": 16000,
+  "tts_sample_rate": 22050,
+  "tts_channels": 1,
+  "_metadata": {
+    "version": "1.0",
+    "last_modified": "2025-01-20T12:40:00.000Z",
+    "source": "default"
+  }
+}

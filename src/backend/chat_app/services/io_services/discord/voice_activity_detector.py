@@ -22,6 +22,28 @@ except ImportError:
     # Fallback imports if audio_services not in path
     from ...audio_services.vad_service import VADService, VADConfig, VADResult, SpeechSegment, VADState
 
+# Import models and DAO
+try:
+    from ...models import vad_model, settings_dao
+    from ...models.vad_constants import VADSensitivityPreset
+except ImportError:
+    # Fallback if constants not available
+    class MockVADConstants:
+        def get_effective_energy_threshold(self): return -40.0
+        def get_webrtc_aggressiveness(self): return 2
+        webrtc_frame_duration_ms = 20
+        min_speech_duration_ms = 300
+        max_silence_duration_ms = 1000
+        noise_suppression_enabled = True
+    
+    vad_model = MockVADConstants()
+    settings_dao = None
+    
+    class VADSensitivityPreset:
+        LOW = "low"
+        MEDIUM = "medium"
+        HIGH = "high"
+
 from .config import VADSensitivity
 
 logger = logging.getLogger(__name__)
@@ -33,15 +55,22 @@ class DiscordVADAdapter:
     def __init__(self, discord_config):
         self.discord_config = discord_config
         
-        # Create VAD configuration from Discord config
-        vad_config = VADConfig(
-            sensitivity=self._convert_sensitivity(discord_config.vad_sensitivity),
-            sample_rate=discord_config.sample_rate,
-            min_speech_duration=discord_config.vad_min_duration,
-            max_silence_duration=discord_config.vad_silence_timeout,
-            enable_preprocessing=discord_config.enable_noise_suppression,
-            save_speech_segments=True
-        )
+        # Create VAD configuration using centralized constants with Discord overrides
+        vad_config_overrides = {
+            'sample_rate': discord_config.sample_rate,
+            'min_speech_duration': discord_config.vad_min_duration,
+            'max_silence_duration': discord_config.vad_silence_timeout,
+            'enable_preprocessing': discord_config.enable_noise_suppression,
+            'save_speech_segments': True,
+            'sensitivity': self._convert_sensitivity(discord_config.vad_sensitivity)
+        }
+        
+        # Use centralized constants with Discord-specific overrides
+        try:
+            vad_config = VADConfig.from_constants(vad_config_overrides)
+        except (AttributeError, TypeError):
+            # Fallback to direct construction if from_constants not available
+            vad_config = VADConfig(**vad_config_overrides)
         
         # Initialize VAD service
         self.vad_service = VADService(vad_config)
@@ -63,15 +92,19 @@ class DiscordVADAdapter:
         logger.info("Discord VAD Adapter initialized")
     
     def _convert_sensitivity(self, discord_sensitivity: VADSensitivity):
-        """Convert Discord VAD sensitivity to core VAD sensitivity"""
-        from audio_services.vad_service import VADSensitivity as CoreVADSensitivity
-        
-        mapping = {
-            VADSensitivity.LOW: CoreVADSensitivity.LOW,
-            VADSensitivity.MEDIUM: CoreVADSensitivity.MEDIUM,
-            VADSensitivity.HIGH: CoreVADSensitivity.HIGH
-        }
-        return mapping.get(discord_sensitivity, CoreVADSensitivity.MEDIUM)
+        """Convert Discord VAD sensitivity to core VAD sensitivity using centralized constants"""
+        try:
+            from audio_services.vad_service import VADSensitivity as CoreVADSensitivity
+            
+            mapping = {
+                VADSensitivity.LOW: CoreVADSensitivity.LOW,
+                VADSensitivity.MEDIUM: CoreVADSensitivity.MEDIUM,
+                VADSensitivity.HIGH: CoreVADSensitivity.HIGH
+            }
+            return mapping.get(discord_sensitivity, CoreVADSensitivity.MEDIUM)
+        except ImportError:
+            # If legacy conversion fails, return the discord sensitivity directly
+            return discord_sensitivity
     
     async def start(self):
         """Start the VAD adapter"""
@@ -182,6 +215,14 @@ class DiscordVADAdapter:
         discord_users = len([s for s in vad_stats.get("sources", {}).keys() 
                            if s.startswith("discord_user_")])
         
+        # Include centralized constants info
+        constants_info = {
+            "effective_energy_threshold": vad_model.effective_energy_threshold_db,
+            "webrtc_aggressiveness": vad_model.effective_webrtc_aggressiveness,
+            "sensitivity_preset": getattr(vad_model, 'sensitivity_preset', 'unknown'),
+            "constants_source": "centralized" if settings_dao else "fallback"
+        }
+        
         return {
             **vad_stats,
             "discord_users_tracked": discord_users,
@@ -189,7 +230,8 @@ class DiscordVADAdapter:
                 "sensitivity": self.discord_config.vad_sensitivity.value,
                 "min_duration": self.discord_config.vad_min_duration,
                 "silence_timeout": self.discord_config.vad_silence_timeout
-            }
+            },
+            "vad_constants": constants_info
         }
     
     def set_callbacks(self, **callbacks):
