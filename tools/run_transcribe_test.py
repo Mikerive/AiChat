@@ -9,8 +9,8 @@ import tempfile
 # Ensure src/ is importable
 sys.path.insert(0, "src")
 
-from backend.chat_app.services.streaming_stt_service import feed_audio
-from backend.chat_app.services.service_manager import get_whisper_service
+from backend.chat_app.services.stt_services.streaming_stt_service import feed_audio
+from backend.chat_app.services.core_services.service_manager import get_whisper_service
 import asyncio
 
 def make_wav_bytes(duration_s: float = 0.5, sr: int = 16000, freq: float = 440.0, amplitude: float = 0.3, silent: bool = False) -> bytes:

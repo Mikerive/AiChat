@@ -193,7 +193,7 @@ def test_chat_history_and_status(app_with_mocks):
 def test_whisper_model_initialized():
     """Ensure the Whisper model is initialized and available (real model)"""
     import asyncio
-    from backend.chat_app.services import service_manager as svc_mgr
+    from backend.chat_app.services.core_services import service_manager as svc_mgr
     # Acquire the whisper service created by the factory
     whisper_svc = svc_mgr.get_whisper_service()
     model_info = asyncio.get_event_loop().run_until_complete(whisper_svc.get_model_info())

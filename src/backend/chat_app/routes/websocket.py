@@ -18,7 +18,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from constants.paths import TEMP_AUDIO_DIR, ensure_dirs
 from event_system import get_event_system, EventType, EventSeverity
 from database import db_ops
-from backend.chat_app.services.service_manager import get_whisper_service, get_chat_service
+from backend.chat_app.services.core_services.service_manager import get_whisper_service, get_chat_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -139,7 +139,7 @@ async def _handle_finalized_utterance(websocket: WebSocket, stream_id: str, fina
                 mock_text = "PIPER_MOCK_TRANSCRIPTION"
                 # Attempt to synthesize via Piper for a real audio file
                 try:
-                    from backend.chat_app.services.piper_tts_service import PiperTTSService
+                    from backend.chat_app.services.tts_services.piper_tts_service import PiperTTSService
                     piper = PiperTTSService()
                     piper_path = await piper.generate_speech(mock_text, "test")
                 except Exception as _e:
@@ -164,7 +164,7 @@ async def _handle_finalized_utterance(websocket: WebSocket, stream_id: str, fina
             if not transcription_result or not isinstance(transcription_result.get("text", ""), str) or not transcription_result.get("text", "").strip():
                 try:
                     # Prefer the in-repo Piper TTS service adapter
-                    from backend.chat_app.services.piper_tts_service import PiperTTSService
+                    from backend.chat_app.services.tts_services.piper_tts_service import PiperTTSService
                     piper = PiperTTSService()
                     # Generate a short deterministic test utterance
                     test_audio_path = await piper.generate_speech("This is a test sentence for transcription.", "test")
@@ -798,7 +798,7 @@ async def handle_websocket_message(websocket: WebSocket, message: Dict[str, Any]
 
             # Feed audio to server-side silence/VAD based session buffer.
             try:
-                from backend.chat_app.services.streaming_stt_service import feed_audio
+                from backend.chat_app.services.stt_services.streaming_stt_service import feed_audio
                 # feed_audio returns a temp WAV path when it decides the utterance is finalized by silence
                 finalized_path = await asyncio.get_event_loop().run_in_executor(None, feed_audio, stream_id, audio_bytes)
             except Exception as e:

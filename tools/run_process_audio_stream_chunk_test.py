@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, "src")
 
 from backend.chat_app.routes.websocket import process_audio_stream_chunk
-from backend.chat_app.services.streaming_stt_service import feed_audio
+from backend.chat_app.services.stt_services.streaming_stt_service import feed_audio
 
 # Create a small WAV bytes helper (same format as tests)
 def make_wav_bytes(duration_s: float = 1.5, sr: int = 16000, freq: float = 440.0, amplitude: float = 0.4, silent: bool = False) -> bytes:

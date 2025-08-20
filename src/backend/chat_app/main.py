@@ -19,7 +19,7 @@ from database import get_db, DatabaseManager
 from event_system import get_event_system, EventType, EventSeverity
 from backend.chat_app.routes import voice, system, chat, websocket
 from backend.chat_app.utils.logging_config import setup_logging
-from backend.chat_app.services.audio_io_service import AudioIOService
+from backend.chat_app.services.io_services.audio_io_service import AudioIOService
 from logs_app.routes import router as logs_router
 
 logger = logging.getLogger(__name__)

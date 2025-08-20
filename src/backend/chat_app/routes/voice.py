@@ -31,8 +31,8 @@ from event_system import (
     emit_training_started, emit_training_progress,
     emit_training_completed, emit_error, emit_audio_uploaded, emit_audio_processed
 )
-from backend.chat_app.services.service_manager import get_whisper_service, get_voice_service, get_tts_finetune_service
-from backend.chat_app.services.audio_io_service import AudioIOService
+from backend.chat_app.services.core_services.service_manager import get_whisper_service, get_voice_service, get_tts_finetune_service
+from backend.chat_app.services.io_services.audio_io_service import AudioIOService
 from backend.tts_finetune_app.processors.audio_processor import AudioProcessor
 from backend.tts_finetune_app.train_voice import VoiceTrainer, VoiceTrainerConfig
 

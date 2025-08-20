@@ -8,7 +8,7 @@ import tempfile
 
 # Ensure package import works
 sys.path.insert(0, "src")
-from backend.chat_app.services.streaming_stt_service import feed_audio
+from backend.chat_app.services.stt_services.streaming_stt_service import feed_audio
 
 def make_wav_bytes(duration_s: float = 0.5, sr: int = 16000, freq: float = 440.0, amplitude: float = 0.3, silent: bool = False) -> bytes:
     n_samples = int(sr * duration_s)

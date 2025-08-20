@@ -15,7 +15,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from database import db_ops, Character, ChatLog
 from event_system import get_event_system, EventType, EventSeverity, emit_chat_response
-from backend.chat_app.services.service_manager import get_whisper_service, get_chat_service
+from backend.chat_app.services.core_services.service_manager import get_whisper_service, get_chat_service
 from backend.chat_app.models.schemas import (
     CharacterResponse, ChatMessage, CharacterSwitch,
     TTSRequest, Character as CharacterSchema

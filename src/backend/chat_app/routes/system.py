@@ -5,7 +5,7 @@ import time
 from typing import Optional, Any, Dict, List
 
 # Import the streaming STT service helpers
-from backend.chat_app.services import streaming_stt_service as stt
+from backend.chat_app.services.stt_services import streaming_stt_service as stt
 
 # Event system for webhook management
 from event_system import get_event_system

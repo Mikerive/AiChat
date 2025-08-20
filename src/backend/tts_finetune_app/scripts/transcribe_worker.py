@@ -19,7 +19,7 @@ from typing import Optional
 
 # Try to import the project's Whisper service
 try:
-    from backend.chat_app.services.whisper_service import VoiceService as WhisperService
+    from backend.chat_app.services.stt_services.whisper_service import VoiceService as WhisperService
     HAS_WHISPER = True
 except Exception:
     HAS_WHISPER = False
