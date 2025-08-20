@@ -15,6 +15,8 @@ import json
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+from constants.paths import PIPER_MODELS, AUDIO_OUTPUT, ensure_dirs
+
 from event_system import get_event_system, EventType, EventSeverity
 
 logger = logging.getLogger(__name__)
@@ -25,8 +27,8 @@ class PiperTTSService:
     
     def __init__(self):
         self.event_system = get_event_system()
-        self.models_path = Path("backend/chat_app/audio/piper_models")
-        self.output_path = Path("backend/chat_app/audio/generated")
+        self.models_path = PIPER_MODELS
+        self.output_path = AUDIO_OUTPUT
         self.piper_executable = self._find_piper_executable()
         self.default_voice = "en_US-hfc_female-medium"
         self.available_voices = {}
@@ -34,8 +36,7 @@ class PiperTTSService:
     
     def _initialize_directories(self):
         """Initialize required directories"""
-        self.models_path.mkdir(parents=True, exist_ok=True)
-        self.output_path.mkdir(parents=True, exist_ok=True)
+        ensure_dirs(self.models_path, self.output_path)
     
     def _find_piper_executable(self) -> Optional[str]:
         """Find Piper executable in system"""

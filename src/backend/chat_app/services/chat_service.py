@@ -11,6 +11,8 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+from constants.paths import AUDIO_OUTPUT, ensure_dirs
+ 
 from database import db_ops, Character
 from event_system import get_event_system, EventType, EventSeverity
 
@@ -275,8 +277,8 @@ class ChatService:
             
             # Fallback: create a simple placeholder file
             try:
-                audio_dir = Path("backend/chat_app/audio/generated")
-                audio_dir.mkdir(parents=True, exist_ok=True)
+                audio_dir = AUDIO_OUTPUT
+                ensure_dirs(audio_dir)
                 
                 import hashlib
                 text_hash = hashlib.md5(text.encode()).hexdigest()[:8]

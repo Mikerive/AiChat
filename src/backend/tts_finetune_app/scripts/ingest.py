@@ -19,17 +19,19 @@ import tempfile
 import sys
 from datetime import datetime
 
+from constants.paths import TTS_TRAINING_DIR, TTS_TRAINING_RAW, TTS_TRAINING_CHECKPOINTS, ensure_dirs
+
 # Configuration defaults
 DEFAULT_SAMPLE_RATE = 22050
-BASE_DIR = Path(__file__).resolve().parents[2]  # backend/tts_finetune_app/scripts -> ../..
-TRAINING_DATA_DIR = BASE_DIR / "training_data"
-RAW_DIR = TRAINING_DATA_DIR / "raw"
-CHECKPOINTS_DIR = BASE_DIR / "checkpoints"
-
+# Base dir for the tts_finetune app (e.g. .../backend/tts_finetune_app)
+BASE_DIR = TTS_TRAINING_DIR.parent
+TRAINING_DATA_DIR = TTS_TRAINING_DIR
+RAW_DIR = TTS_TRAINING_RAW
+CHECKPOINTS_DIR = TTS_TRAINING_CHECKPOINTS
 
 def ensure_dirs():
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    CHECKPOINTS_DIR.mkdir(parents=True, exist_ok=True)
+    # Delegate to centralized ensure_dirs helper so all scripts create the same folders
+    ensure_dirs(TRAINING_DATA_DIR, RAW_DIR, CHECKPOINTS_DIR)
 
 
 def compute_sha256(path: Path) -> str:

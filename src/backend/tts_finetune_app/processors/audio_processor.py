@@ -7,6 +7,7 @@ backend/tts_finetune_app/processors for cleaner package layout.
 """
 
 from pathlib import Path
+from constants.paths import TTS_TRAINING_DIR, ensure_dirs
 from typing import List, Tuple, Dict, Optional
 import logging
 import tempfile
@@ -30,7 +31,7 @@ class TrainingConfig:
     sample_rate: int = 22050
     min_audio_length: float = 3.0
     max_audio_length: float = 30.0
-    training_data_dir: str = "backend/tts_finetune_app/training_data"
+    training_data_dir: str = str(TTS_TRAINING_DIR)
     frame_ms: float = 30.0
     hop_ms: float = 10.0
     initial_factor: float = 0.5
@@ -76,8 +77,7 @@ class AudioProcessor:
         self.audio_dir = self.base_dir / "audio"
         self.checkpoints_dir = self.base_dir / "checkpoints"
         # Ensure dirs exist
-        for d in (self.raw_dir, self.vocals_dir, self.audio_dir, self.checkpoints_dir):
-            d.mkdir(parents=True, exist_ok=True)
+        ensure_dirs(self.raw_dir, self.vocals_dir, self.audio_dir, self.checkpoints_dir)
         logger.info(f"AudioProcessor initialized (training_data_dir={self.base_dir})")
 
     def load_audio(self, audio_path: Path) -> Tuple[np.ndarray, int]:

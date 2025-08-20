@@ -25,11 +25,16 @@ import librosa
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-TRAINING_DIR = BASE_DIR / "training_data"
+from constants.paths import TTS_TRAINING_DIR, TTS_TRAINING_PROCESSED, ensure_dirs
+
+BASE_DIR = TTS_TRAINING_DIR.parent
+TRAINING_DIR = TTS_TRAINING_DIR
 AUDIO_DIR = TRAINING_DIR / "audio"
-PROCESSED_DIR = TRAINING_DIR / "processed"
+PROCESSED_DIR = TTS_TRAINING_PROCESSED
 CHECKPOINTS_DIR = TRAINING_DIR / "checkpoints"
+
+# Ensure canonical directories exist
+ensure_dirs(TRAINING_DIR, AUDIO_DIR, PROCESSED_DIR, CHECKPOINTS_DIR)
 
 SAMPLE_RATE = 22050
 MIN_AUDIO_LENGTH = 3.0  # seconds

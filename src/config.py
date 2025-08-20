@@ -7,6 +7,8 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
 
+from constants.paths import PROJECT_ROOT, BACKEND_SRC, PIPER_MODELS
+
 # pydantic v2 moved BaseSettings to the pydantic-settings package.
 # Provide a compatibility import that works with v1 and v2 installs.
 try:
@@ -39,12 +41,12 @@ class Settings(BaseSettings):
     
     # Model Configuration
     whisper_model: str = Field(default="base", env="WHISPER_MODEL")
-    piper_model_path: str = Field(default="models/piper/en_US-amy-medium.onnx", env="PIPER_MODEL_PATH")
+    piper_model_path: Path = Field(default=PIPER_MODELS / "en_US-amy-medium.onnx", env="PIPER_MODEL_PATH")
     
     # Paths Configuration
-    models_dir: Path = Field(default=Path("backend/chat/models"), env="MODELS_DIR")
-    log_file: Path = Field(default=Path("logs/vtuber.log"), env="LOG_FILE")
-    data_dir: Path = Field(default=Path("data"), env="DATA_DIR")
+    models_dir: Path = Field(default=BACKEND_SRC / "chat" / "models", env="MODELS_DIR")
+    log_file: Path = Field(default=PROJECT_ROOT / "logs" / "vtuber.log", env="LOG_FILE")
+    data_dir: Path = Field(default=PROJECT_ROOT / "data", env="DATA_DIR")
     
     # Character Configuration
     character_name: str = Field(default="Miku", env="CHARACTER_NAME")

@@ -14,6 +14,8 @@ import soundfile as sf
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+from constants.paths import TEMP_AUDIO_DIR, ensure_dirs
+
 from event_system import get_event_system, EventType, EventSeverity
 
 logger = logging.getLogger(__name__)
@@ -153,26 +155,31 @@ class WhisperService:
             return self._get_mock_transcription(audio_path)
     
     def _get_mock_transcription(self, audio_path) -> Dict[str, Any]:
-        """Get mock transcription for testing"""
+        """Get mock transcription for testing
+        
+        Return a deterministic, non-empty transcription so integration tests relying
+        on a transcript can proceed even when the real model returns empty text.
+        """
         from pathlib import Path as _Path
         p = _Path(audio_path)
-        mock_text = f"This is a mock transcription of {p.name}. In a real implementation, this would be the actual transcribed text from the audio file."
+        # Provide a short, deterministic mock transcription tied to Piper fallback for tests
+        mock_text = f"PIPER_MOCK_TRANSCRIPTION for {p.name}"
         
         return {
             "text": mock_text,
             "language": "en",
             "confidence": 0.85,
             "processing_time": 1.5,
-            "duration": 10.0,
+            "duration": 1.5,
             "mock": True
         }
     
     async def transcribe_audio_bytes(self, audio_bytes: bytes) -> Dict[str, Any]:
         """Transcribe audio from bytes"""
         try:
-            # Save temporary file
-            temp_dir = Path("temp_audio")
-            temp_dir.mkdir(exist_ok=True)
+            # Save temporary file (centralized temp dir)
+            temp_dir = TEMP_AUDIO_DIR
+            ensure_dirs(temp_dir)
             temp_file = temp_dir / f"temp_{int(time.time())}.wav"
             
             # Write audio bytes to file
@@ -183,7 +190,10 @@ class WhisperService:
             result = await self.transcribe_audio(temp_file)
             
             # Clean up
-            temp_file.unlink()
+            try:
+                temp_file.unlink()
+            except Exception:
+                pass
             
             return result
             

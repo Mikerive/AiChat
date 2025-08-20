@@ -23,8 +23,13 @@ import librosa
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-DEFAULT_PROCESSED = Path(__file__).resolve().parents[2] / "training_data" / "processed"
-DEFAULT_OUTPUT = Path(__file__).resolve().parents[2] / "piper_dataset"
+from constants.paths import TTS_TRAINING_PROCESSED, TTS_PIPER_DATASET, ensure_dirs
+
+DEFAULT_PROCESSED = TTS_TRAINING_PROCESSED
+DEFAULT_OUTPUT = TTS_PIPER_DATASET
+
+# Ensure default dirs exist when script runs
+ensure_dirs(DEFAULT_PROCESSED, DEFAULT_OUTPUT)
 
 
 def probe_audio(path: Path):

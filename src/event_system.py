@@ -9,6 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, List, Optional, Callable, Awaitable
 from pathlib import Path
+from constants.paths import TTS_LOGS_DIR, ensure_dirs
 
 from database import EventLog as EventLogModel
 from database import db_ops
@@ -74,10 +75,19 @@ class Event:
         self.timestamp = datetime.utcnow()
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert event to dictionary"""
+        """Convert event to dictionary
+
+        Includes both the canonical dot-separated 'event_type' and a backwards-compatible
+        underscore-separated 'event' key so older frontend/tests that subscribe using the
+        underscore form (e.g. 'audio_transcribed') will still receive broadcasts.
+        """
+        event_type_val = self.event_type.value
+        # Backwards-compatible alias (dots -> underscores)
+        event_alias = event_type_val.replace(".", "_")
         return {
             "id": id(self),
-            "event_type": self.event_type.value,
+            "event_type": event_type_val,
+            "event": event_alias,
             "message": self.message,
             "data": self.data,
             "severity": self.severity.value,
@@ -113,8 +123,8 @@ class EventSystem:
             
             # Ensure disk log directory exists for durable event logging
             try:
-                logs_dir = Path("backend/tts_finetune_app/logs")
-                logs_dir.mkdir(parents=True, exist_ok=True)
+                logs_dir = TTS_LOGS_DIR
+                ensure_dirs(logs_dir)
                 self.events_log_path = logs_dir / "events.log"
             except Exception as _e:
                 # If we cannot create the log directory, continue without disk sink

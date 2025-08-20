@@ -4,8 +4,9 @@ Voice service for handling voice training and TTS functionality
 
 import logging
 from pathlib import Path
+from constants.paths import AUDIO_OUTPUT, TTS_MODELS_DIR, ensure_dirs
 from typing import Dict, Any, Optional
-
+ 
 from event_system import get_event_system, EventType, EventSeverity
 
 logger = logging.getLogger(__name__)
@@ -64,9 +65,9 @@ class VoiceService:
     async def generate_tts(self, text: str, character_id: int, character_name: str) -> Optional[Path]:
         """Generate text-to-speech audio using Piper"""
         try:
-            # Generate audio directory
-            audio_dir = Path("backend/chat/audio")
-            audio_dir.mkdir(parents=True, exist_ok=True)
+            # Generate audio directory (centralized)
+            audio_dir = AUDIO_OUTPUT
+            ensure_dirs(audio_dir)
             
             # Create output filename
             import hashlib
@@ -215,7 +216,7 @@ class VoiceService:
     async def get_available_models(self) -> list:
         """Get available voice models"""
         try:
-            models_dir = Path("backend/tts_finetune_app/models")
+            models_dir = TTS_MODELS_DIR
             if not models_dir.exists():
                 return []
             
@@ -237,7 +238,7 @@ class VoiceService:
     async def load_voice_model(self, model_name: str) -> bool:
         """Load a voice model"""
         try:
-            model_path = Path("backend/tts_finetune_app/models") / model_name
+            model_path = TTS_MODELS_DIR / model_name
             
             if not model_path.exists():
                 logger.error(f"Voice model not found: {model_name}")
@@ -264,7 +265,7 @@ class VoiceService:
     async def get_voice_model_info(self, model_name: str) -> Optional[Dict[str, Any]]:
         """Get voice model information"""
         try:
-            model_path = Path("backend/tts_finetune_app/models") / model_name
+            model_path = TTS_MODELS_DIR / model_name
             
             if not model_path.exists():
                 return None
@@ -291,7 +292,7 @@ class VoiceService:
     async def delete_voice_model(self, model_name: str) -> bool:
         """Delete a voice model"""
         try:
-            model_path = Path("backend/tts_finetune_app/models") / model_name
+            model_path = TTS_MODELS_DIR / model_name
             
             if not model_path.exists():
                 logger.error(f"Voice model not found: {model_name}")

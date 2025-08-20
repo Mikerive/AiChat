@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
+from constants.paths import BACKEND_SRC
 from config import get_settings
 
 # Import components
@@ -297,22 +298,20 @@ class VTuberGUI:
             self.add_log("Connection failed. Attempting to start backend server...")
         
         try:
-            # Find the backend main.py file
+            # Find the backend main.py file using centralized paths
             src_dir = Path(__file__).parent.parent
-            backend_main = src_dir / "backend" / "chat_app" / "main.py"
+            backend_main = BACKEND_SRC / "chat_app" / "main.py"
             
             if not backend_main.exists():
-                # Try alternative path
-                backend_main = src_dir / "main.py"
-                
-            # Try to start using backend/main.py
-            backend_main = src_dir / "backend" / "main.py"
+                # Try alternative path inside backend package
+                backend_main = BACKEND_SRC / "main.py"
+            
             if backend_main.exists():
                 # Start backend process directly
                 self.backend_process = subprocess.Popen([
                     sys.executable, str(backend_main)
-                ], cwd=str(src_dir), 
-                   stdout=subprocess.PIPE, 
+                ], cwd=str(src_dir),
+                   stdout=subprocess.PIPE,
                    stderr=subprocess.PIPE,
                    text=True)
                 

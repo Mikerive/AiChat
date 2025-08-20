@@ -11,6 +11,14 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Uplo
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
+from constants.paths import (
+    TTS_TRAINING_DIR,
+    TTS_TRAINING_RAW,
+    TTS_TRAINING_PROCESSED,
+    TTS_MODELS_DIR,
+    TTS_LOGS_DIR,
+    ensure_dirs
+)
 
 logger = logging.getLogger(__name__)
 
@@ -179,15 +187,15 @@ async def get_status():
 # -----------------------
 # Voice Trainer Endpoints
 # -----------------------
-VOICE_TRAINER_DIR = Path("backend/tts_finetune_app")
-TRAINING_DATA_DIR = VOICE_TRAINER_DIR / "training_data"
-TRAINING_AUDIO_DIR = TRAINING_DATA_DIR / "audio"
-MODELS_OUTPUT_DIR = VOICE_TRAINER_DIR / "models"
-RAW_UPLOAD_DIR = TRAINING_DATA_DIR / "raw"
-
-# Ensure directories exist
-for p in (TRAINING_DATA_DIR, TRAINING_AUDIO_DIR, MODELS_OUTPUT_DIR, RAW_UPLOAD_DIR):
-    p.mkdir(parents=True, exist_ok=True)
+# Use centralized paths from src/constants/paths
+VOICE_TRAINER_DIR = TTS_TRAINING_DIR.parent
+TRAINING_DATA_DIR = TTS_TRAINING_DIR
+TRAINING_AUDIO_DIR = TTS_TRAINING_DIR / "audio"
+MODELS_OUTPUT_DIR = TTS_MODELS_DIR
+RAW_UPLOAD_DIR = TTS_TRAINING_RAW
+ 
+# Ensure directories exist (best-effort)
+ensure_dirs(TRAINING_DATA_DIR, TRAINING_AUDIO_DIR, MODELS_OUTPUT_DIR, RAW_UPLOAD_DIR)
 
 @app.post("/voice_trainer/upload")
 async def upload_audio(file: UploadFile = File(...)):
@@ -335,7 +343,7 @@ async def websocket_endpoint(websocket: WebSocket):
 async def aggregate_logs(limit: int = 1000):
     """Return aggregated counts from the persistent events log and recent lines"""
     try:
-        logs_path = Path("backend/tts_finetune_app/logs/events.log")
+        logs_path = TTS_LOGS_DIR / "events.log"
         if not logs_path.exists():
             return {"total": 0, "by_type": {}, "recent": []}
 

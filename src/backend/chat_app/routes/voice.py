@@ -12,10 +12,23 @@ from pydantic import BaseModel
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+from constants.paths import (
+    TTS_TRAINING_RAW,
+    TTS_TRAINING_PROCESSED,
+    TTS_TRAINING_DIR,
+    TTS_TRAINING_METADATA,
+    TTS_MODELS_DIR,
+    TTS_PIPER_DATASET,
+    TTS_LOGS_DIR,
+    TTS_TRAINING_CHECKPOINTS,
+    TEMP_AUDIO_DIR,
+    ensure_dirs
+)
+ 
 from database import db_ops, TrainingData, VoiceModel
 from event_system import (
-    get_event_system, EventType, EventSeverity, 
-    emit_training_started, emit_training_progress, 
+    get_event_system, EventType, EventSeverity,
+    emit_training_started, emit_training_progress,
     emit_training_completed, emit_error, emit_audio_uploaded, emit_audio_processed
 )
 from backend.chat_app.services.service_manager import get_whisper_service, get_voice_service, get_tts_finetune_service
@@ -59,8 +72,8 @@ async def upload_audio(
     """Upload an audio file for processing"""
     try:
         # Save uploaded file
-        upload_dir = Path("backend/tts_finetune_app/training_data/raw")
-        upload_dir.mkdir(parents=True, exist_ok=True)
+        upload_dir = TTS_TRAINING_RAW
+        ensure_dirs(upload_dir)
         
         file_path = upload_dir / file.filename
         with open(file_path, "wb") as buffer:
@@ -91,13 +104,13 @@ async def process_uploaded_audio(
 ):
     """Process a previously uploaded file into training clips"""
     try:
-        file_path = Path("backend/tts_finetune_app/training_data/raw") / filename
+        file_path = TTS_TRAINING_RAW / filename
         if not file_path.exists():
             raise HTTPException(status_code=404, detail="Uploaded file not found")
         
         # Use audio processor
         audio_processor = AudioProcessor()
-        training_data_dir = Path("backend/tts_finetune_app/training_data")
+        training_data_dir = TTS_TRAINING_DIR
         saved = audio_processor.process_and_split_file(file_path, training_data_dir / "audio")
         
         # Create training data entries in database
@@ -169,8 +182,8 @@ async def start_training(
         if not input_dir.exists():
             raise HTTPException(status_code=404, detail="Input directory not found")
         
-        output_dir = Path("backend/tts_finetune_app/models") / req.model_name
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = TTS_MODELS_DIR / req.model_name
+        ensure_dirs(output_dir)
         
         # Emit training started event
         await emit_training_started(
@@ -270,8 +283,8 @@ async def generate_manifest_endpoint(
     try:
         if tts_service is None:
             raise HTTPException(status_code=500, detail="TTS finetune service unavailable")
-        input_dir = Path("backend/tts_finetune_app/training_data/processed")
-        metadata_csv = Path("backend/tts_finetune_app/training_data/metadata.csv")
+        input_dir = TTS_TRAINING_PROCESSED
+        metadata_csv = TTS_TRAINING_METADATA
         out = Path(output_dir)
         # Run manifest generator synchronously; consider background task if large
         res = tts_service.generate_manifest(
@@ -301,8 +314,8 @@ async def start_orchestrator_endpoint(
     try:
         if tts_service is None:
             raise HTTPException(status_code=500, detail="TTS finetune service unavailable")
-        dataset_dir = Path("backend/tts_finetune_app/piper_dataset")
-        output_dir = Path("backend/tts_finetune_app/models")
+        dataset_dir = TTS_PIPER_DATASET
+        output_dir = TTS_MODELS_DIR
         # Run orchestrator in background to avoid blocking
         def _run():
             try:
@@ -342,7 +355,7 @@ async def list_checkpoints(
 ):
     """List available checkpoints for models"""
     try:
-        models_dir = Path("backend/tts_finetune_app/models")
+        models_dir = TTS_MODELS_DIR
         results = {}
         
         if model_name:
@@ -404,8 +417,8 @@ async def transcribe_audio(
     """Transcribe audio file using Whisper"""
     try:
         # Save uploaded file
-        temp_file = Path("temp_audio") / file.filename
-        temp_file.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = TEMP_AUDIO_DIR / file.filename
+        ensure_dirs(TEMP_AUDIO_DIR)
         
         with open(temp_file, "wb") as buffer:
             content = await file.read()
@@ -469,10 +482,10 @@ async def get_voice_status(
 async def job_status(job_id: str):
     """Read job checkpoint JSON and return status summary"""
     try:
-        job_path = Path("backend/tts_finetune_app/models") / job_id / "job_checkpoint.json"
+        job_path = TTS_MODELS_DIR / job_id / "job_checkpoint.json"
         if not job_path.exists():
             # Also check checkpoints dir
-            alt = Path("backend/tts_finetune_app/training_data/checkpoints") / f"{job_id}.json"
+            alt = TTS_TRAINING_CHECKPOINTS / f"{job_id}.json"
             if alt.exists():
                 job_path = alt
             else:
@@ -490,10 +503,10 @@ async def job_status(job_id: str):
 async def job_logs(job_id: str, tail: int = 200):
     """Return the last N lines of the orchestrator or events logs for a given job"""
     try:
-        logs_dir = Path("backend/tts_finetune_app/logs")
-        logs_dir.mkdir(parents=True, exist_ok=True)
+        logs_dir = TTS_LOGS_DIR
+        ensure_dirs(logs_dir)
         # Prioritize model-specific training.log
-        model_log = Path("backend/tts_finetune_app/models") / job_id / "training.log"
+        model_log = TTS_MODELS_DIR / job_id / "training.log"
         event_log = logs_dir / "events.log"
         target = model_log if model_log.exists() else event_log if event_log.exists() else None
         if not target:
