@@ -27,7 +27,8 @@
       "Bash(find:*)",
       "Bash(aichat:*)",
       "Bash(true)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

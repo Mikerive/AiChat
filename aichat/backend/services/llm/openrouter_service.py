@@ -1,5 +1,6 @@
 """
 OpenRouter Service for LLM Processing according to the flow diagram
+Enhanced with PydanticAI integration as fallback
 """
 
 import logging
@@ -8,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 # Local imports
 from aichat.core.event_system import EventSeverity, EventType, get_event_system
+from .pydantic_ai_service import PydanticAIService
 
 import aiohttp
 
@@ -26,6 +28,9 @@ class OpenRouterService:
         self.default_model = "anthropic/claude-3-haiku"
         self.session = None
 
+        # Initialize PydanticAI service as enhanced fallback
+        self.pydantic_ai = PydanticAIService(openrouter_key=self.api_key)
+
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create HTTP session"""
         if self.session is None or self.session.closed:
@@ -42,6 +47,7 @@ class OpenRouterService:
         """Close HTTP session"""
         if self.session and not self.session.closed:
             await self.session.close()
+        await self.pydantic_ai.close()
 
     async def generate_response(
         self,
@@ -150,9 +156,12 @@ class OpenRouterService:
                         EventSeverity.ERROR,
                     )
 
-                    # Return fallback response
-                    return await self._generate_fallback_response(
-                        message, character_name, character_personality
+                    # Use PydanticAI enhanced fallback
+                    return await self.pydantic_ai.generate_response(
+                        message,
+                        character_name,
+                        character_personality,
+                        character_profile,
                     )
 
         except Exception as e:
@@ -166,9 +175,9 @@ class OpenRouterService:
                 EventSeverity.ERROR,
             )
 
-            # Return fallback response
-            return await self._generate_fallback_response(
-                message, character_name, character_personality
+            # Use PydanticAI enhanced fallback
+            return await self.pydantic_ai.generate_response(
+                message, character_name, character_personality, character_profile
             )
 
     def _build_character_prompt(
@@ -338,3 +347,57 @@ Remember:
         except Exception as e:
             logger.error(f"Error getting model info: {e}")
             return None
+
+    async def generate_enhanced_response(
+        self,
+        message: str,
+        character_name: str,
+        character_personality: str,
+        character_profile: str,
+        use_pydantic_ai: bool = True,
+        model: Optional[str] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Generate response with PydanticAI features (tools, memory, etc.)"""
+
+        if use_pydantic_ai and self.pydantic_ai:
+            # Use PydanticAI with all its enhanced features
+            return await self.pydantic_ai.generate_response(
+                message,
+                character_name,
+                character_personality,
+                character_profile,
+                model,
+                **kwargs,
+            )
+        else:
+            # Fall back to traditional OpenRouter API
+            return await self.generate_response(
+                message,
+                character_name,
+                character_personality,
+                character_profile,
+                model,
+                **kwargs,
+            )
+
+    async def generate_streaming_response(
+        self,
+        message: str,
+        character_name: str,
+        character_personality: str,
+        character_profile: str,
+        model: Optional[str] = None,
+    ):
+        """Generate streaming response using PydanticAI"""
+        if self.pydantic_ai:
+            async for chunk in self.pydantic_ai.generate_streaming_response(
+                message, character_name, character_personality, character_profile, model
+            ):
+                yield chunk
+        else:
+            # Fallback to non-streaming
+            result = await self.generate_response(
+                message, character_name, character_personality, character_profile, model
+            )
+            yield {**result, "final": True}

@@ -5,6 +5,9 @@ AudioIO Service for centralized audio input/output device management
 import asyncio
 import logging
 from pathlib import Path
+from enum import Enum
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any, Union
 
 # Third-party imports
 import numpy as np
