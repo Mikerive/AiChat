@@ -4,10 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+### Installation
+- **Install package**: `pip install -e .` (development mode)
+- **Install with dependencies**: `pip install -e .[dev,gui,training]`
+
 ### Running the Application
-- **Start backend**: `python start_backend.py` (recommended FastAPI server)
-- **Start GUI**: `python start_gui.py` (optional Tkinter debug interface)
-- **Alternative backend**: `cd src && python -m uvicorn backend.chat_app.main:create_app --factory --host localhost --port 8765 --reload`
+- **Start backend**: `aichat-backend` or `aichat backend --host localhost --port 8765 --reload`
+- **Start GUI**: `aichat-frontend` or `aichat frontend`
+- **Start training**: `aichat-training` or `aichat training --mode serve`
+- **CLI help**: `aichat --help`
 
 ### Testing and Quality
 - **Run tests**: `pytest` or `pytest -q` for quiet output
@@ -17,32 +22,44 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Package Management
 - **Install dependencies**: `pip install -r requirements.txt`
+- **Development dependencies**: `pip install -r requirements-dev.txt`
 - **Virtual environment**: `python -m venv venv` then `venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Unix)
 
 ## Project Architecture
 
 ### Repository Structure Map
 ```
-VtuberMiku/
-├── src/                              # Main source code
-│   ├── backend/
-│   │   ├── chat_app/                 # FastAPI web application
-│   │   │   ├── routes/               # API endpoints
-│   │   │   ├── services/             # Business logic layer
-│   │   │   └── audio/                # TTS models and generated files
-│   │   └── tts_finetune_app/         # Voice training pipeline
-│   │       ├── scripts/              # Training workflow scripts
-│   │       └── training_data/        # Audio clips and transcripts
-│   ├── frontend/                     # Tkinter debug GUI
-│   │   └── components/               # Modular UI components
-│   ├── logs_app/                     # Microservice for event logging
-│   └── constants/                    # Shared path definitions
+aichat/                               # Main Python package
+├── aichat/                           # Package source code
+│   ├── constants/                    # Centralized constants and paths
+│   ├── core/                         # Core infrastructure (config, database, events)
+│   ├── models/                       # Pydantic schemas and data models
+│   ├── backend/                      # FastAPI web application
+│   │   ├── routes/                   # API endpoints
+│   │   ├── services/                 # Business logic layer
+│   │   │   ├── chat/                 # Chat and voice orchestration
+│   │   │   ├── voice/                # STT/TTS services
+│   │   │   ├── audio/                # Audio processing
+│   │   │   ├── discord/              # Discord integration
+│   │   │   └── llm/                  # Language model services
+│   │   ├── dao/                      # Data access objects
+│   │   └── utils/                    # Utility functions
+│   ├── frontend/                     # Tkinter GUI components
+│   ├── training/                     # Voice training pipeline
+│   ├── logs/                         # Logging microservice
+│   ├── tools/                        # Development tools
+│   └── cli/                          # Command-line interface
 ├── tests/                            # Test suites
-│   ├── unit/                         # Component-level tests
-│   └── integration/                  # End-to-end API tests
-├── logs/                             # Runtime log files
-├── constants/                        # Legacy path constants (migrating to src/constants/)
-└── start_*.py                        # Application launchers
+│   ├── chatapp/                      # Application tests
+│   ├── integration/                  # End-to-end tests
+│   └── database/                     # Database test utilities
+├── data/                             # Application data
+│   ├── audio/                        # Audio files and models
+│   ├── training/                     # Training datasets
+│   └── logs/                         # Runtime log files
+├── config/                           # Configuration files
+├── pyproject.toml                    # Modern Python packaging
+└── requirements*.txt                 # Dependencies
 ```
 
 ### Core Structure

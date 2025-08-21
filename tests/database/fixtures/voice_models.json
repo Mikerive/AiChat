@@ -1,0 +1,20 @@
+[
+    {
+        "id": 1,
+        "name": "hatsune_miku_v1",
+        "model_path": "/test/models/miku_v1.onnx",
+        "character_id": 1,
+        "status": "trained",
+        "epochs_trained": 100,
+        "loss": 0.025
+    },
+    {
+        "id": 2,
+        "name": "kagamine_rin_v1",
+        "model_path": "/test/models/rin_v1.onnx",
+        "character_id": 2,
+        "status": "training",
+        "epochs_trained": 45,
+        "loss": 0.045
+    }
+]

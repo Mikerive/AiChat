@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aichat"
+version = "1.0.0"
+description = "AI chat application with voice cloning and real-time interactions"
+readme = "README.md"
+authors = [
+    {name = "AI Chat Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "aiofiles>=23.2.1",
+    "aiosqlite>=0.19.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "websockets>=12.0",
+    "aiohttp>=3.9.0",
+    "openai-whisper>=20231117",
+    "torch>=2.1.0",
+    "torchaudio>=2.1.0",
+    "librosa>=0.10.1",
+    "soundfile>=0.12.1",
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+    "discord.py>=2.3.0",
+    "python-multipart>=0.0.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.7.0",
+    "isort>=5.12.0",
+    "autoflake>=2.2.0",
+]
+gui = [
+    "Pillow>=10.0.0",
+]
+training = [
+    "spleeter>=2.4.0",
+]
+
+[project.scripts]
+aichat = "aichat.cli.main:main"
+aichat-backend = "aichat.cli.backend:main"
+aichat-frontend = "aichat.cli.frontend:main"
+aichat-training = "aichat.cli.training:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["aichat*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+asyncio_mode = "auto"

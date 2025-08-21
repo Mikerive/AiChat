@@ -24,7 +24,14 @@ if str(SRC) not in sys.path:
 
 from backend.chat_app.main import create_app
 
-def _make_wav_bytes(duration_s: float = 0.5, sr: int = 16000, freq: float = 440.0, amplitude: float = 0.3, silent: bool = False) -> bytes:
+
+def _make_wav_bytes(
+    duration_s: float = 0.5,
+    sr: int = 16000,
+    freq: float = 440.0,
+    amplitude: float = 0.3,
+    silent: bool = False,
+) -> bytes:
     """
     Create a mono PCM16 WAV in-memory and return bytes.
     - duration_s: seconds per chunk (matching frontend chunking ~0.5s)
@@ -53,6 +60,7 @@ def _make_wav_bytes(duration_s: float = 0.5, sr: int = 16000, freq: float = 440.
         wf.writeframes(frames)
     return bio.getvalue()
 
+
 def test_voice_to_text_and_text_to_voice_pipeline():
     """
     This test will:
@@ -77,7 +85,17 @@ def test_voice_to_text_and_text_to_voice_pipeline():
             pass
 
         # Subscribe to events of interest to simplify later reads
-        ws.send_json({"type": "subscribe", "events": ["audio_transcribed", "audio_generated", "chat.response", "chat_complete"]})
+        ws.send_json(
+            {
+                "type": "subscribe",
+                "events": [
+                    "audio_transcribed",
+                    "audio_generated",
+                    "chat.response",
+                    "chat_complete",
+                ],
+            }
+        )
         try:
             sub = ws.receive_json(timeout=2)
         except Exception:
@@ -86,9 +104,17 @@ def test_voice_to_text_and_text_to_voice_pipeline():
 
         # Send several "voice" chunks
         for i in range(3):
-            wav = _make_wav_bytes(duration_s=0.5, sr=16000, freq=400.0 + (i*20), amplitude=0.4, silent=False)
+            wav = _make_wav_bytes(
+                duration_s=0.5,
+                sr=16000,
+                freq=400.0 + (i * 20),
+                amplitude=0.4,
+                silent=False,
+            )
             b64 = base64.b64encode(wav).decode("ascii")
-            ws.send_json({"type": "audio_stream", "stream_id": stream_id, "audio_data": b64})
+            ws.send_json(
+                {"type": "audio_stream", "stream_id": stream_id, "audio_data": b64}
+            )
             # receive optional ack audio_received
             try:
                 ack = ws.receive_json(timeout=2)
@@ -99,7 +125,9 @@ def test_voice_to_text_and_text_to_voice_pipeline():
         for _ in range(3):
             silence = _make_wav_bytes(duration_s=0.5, sr=16000, silent=True)
             b64s = base64.b64encode(silence).decode("ascii")
-            ws.send_json({"type": "audio_stream", "stream_id": stream_id, "audio_data": b64s})
+            ws.send_json(
+                {"type": "audio_stream", "stream_id": stream_id, "audio_data": b64s}
+            )
             try:
                 ack = ws.receive_json(timeout=2)
             except Exception:
@@ -110,7 +138,9 @@ def test_voice_to_text_and_text_to_voice_pipeline():
         got_transcription = None
         got_chat_complete = None
 
-        while time.time() < deadline and (got_transcription is None or got_chat_complete is None):
+        while time.time() < deadline and (
+            got_transcription is None or got_chat_complete is None
+        ):
             try:
                 msg = ws.receive_text(timeout=deadline - time.time())
             except Exception:
@@ -121,21 +151,42 @@ def test_voice_to_text_and_text_to_voice_pipeline():
                 continue
 
             mtype = payload.get("type") or payload.get("event") or ""
-            if mtype in ("transcription_final", "transcription", "transcription_partial"):
+            if mtype in (
+                "transcription_final",
+                "transcription",
+                "transcription_partial",
+            ):
                 # capture transcription
                 if payload.get("text") or payload.get("partial"):
                     got_transcription = payload
-            if payload.get("type") == "chat_complete" or payload.get("event") == "response_ready":
+            if (
+                payload.get("type") == "chat_complete"
+                or payload.get("event") == "response_ready"
+            ):
                 got_chat_complete = payload
 
-        assert got_transcription is not None, "No transcription received within timeout (10s)"
+        assert (
+            got_transcription is not None
+        ), "No transcription received within timeout (10s)"
         # transcription should contain some non-empty text (mock or real)
         text = got_transcription.get("text") or got_transcription.get("partial") or ""
-        assert isinstance(text, str) and text.strip() != "", f"Transcription empty: {got_transcription}"
+        assert (
+            isinstance(text, str) and text.strip() != ""
+        ), f"Transcription empty: {got_transcription}"
 
-        assert got_chat_complete is not None, "No chat_complete / TTS response received within timeout (10s)"
+        assert (
+            got_chat_complete is not None
+        ), "No chat_complete / TTS response received within timeout (10s)"
         # chat_complete should contain a character_response or audio_file
         # websocket handler constructs the chat_complete with 'character_response' and 'audio_file'
-        char_resp = got_chat_complete.get("character_response") or got_chat_complete.get("text") or got_chat_complete.get("character_response")
+        char_resp = (
+            got_chat_complete.get("character_response")
+            or got_chat_complete.get("text")
+            or got_chat_complete.get("character_response")
+        )
         audio_file = got_chat_complete.get("audio_file")
-        assert (char_resp and isinstance(char_resp, str)) or audio_file is not None, f"chat_complete payload missing response/audio: {got_chat_complete}"
+        assert (
+            char_resp and isinstance(char_resp, str)
+        ) or audio_file is not None, (
+            f"chat_complete payload missing response/audio: {got_chat_complete}"
+        )

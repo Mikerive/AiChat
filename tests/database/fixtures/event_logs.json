@@ -1,0 +1,36 @@
+[
+    {
+        "id": 1,
+        "event_type": "chat.message",
+        "message": "User sent message to hatsune_miku",
+        "data": {
+            "user_id": "test_user",
+            "character": "hatsune_miku"
+        },
+        "severity": "INFO",
+        "source": "chat_service"
+    },
+    {
+        "id": 2,
+        "event_type": "tts.generated",
+        "message": "Generated TTS audio for character response",
+        "data": {
+            "character": "hatsune_miku",
+            "duration": 3.2,
+            "audio_file": "test_audio.wav"
+        },
+        "severity": "INFO",
+        "source": "piper_tts_service"
+    },
+    {
+        "id": 3,
+        "event_type": "system.error",
+        "message": "Failed to load voice model",
+        "data": {
+            "model_path": "/invalid/path.onnx",
+            "error": "FileNotFoundError"
+        },
+        "severity": "ERROR",
+        "source": "voice_service"
+    }
+]

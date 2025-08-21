@@ -41,6 +41,12 @@ dist/
 # Logs and databases
 *.log
 *.sqlite3
+*.db
+
+# Test databases
+tests/database/test_data.db
+tests/database/*.db
+tests/*.db
 
 # Audio / data artifacts
 backend/tts_finetune_app/training_data/

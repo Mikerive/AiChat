@@ -1,95 +1,112 @@
-# VTuber Application Startup Guide
+# AI Chat Application Startup Guide
 
-## Quick Start (2 Terminal Method)
+## Quick Start
 
-### Terminal 1 - Backend Server:
+### Start Backend Server:
 ```bash
-# Option A: Using Python script
-python start_backend.py
+# Recommended: Using CLI command
+aichat-backend
 
-# Option B: Using Windows batch file
-start_backend.bat
+# With custom settings
+aichat backend --host localhost --port 8765 --reload
 
-# Option C: Manual command
-cd src
-python -m uvicorn backend.chat_app.main:create_app --factory --host localhost --port 8765 --reload
+# Alternative: Direct Python module
+python -m aichat.cli.backend
 ```
 
-### Terminal 2 - GUI Application:
+### Start GUI Application:
 ```bash
-# Option A: Using Python script
-python start_gui.py
+# Using CLI command
+aichat-frontend
 
-# Option B: Using Windows batch file  
-start_gui.bat
-
-# Option C: Manual command
-cd src
-python -m frontend.gui
+# Alternative: Direct Python module
+python -m aichat.cli.frontend
 ```
 
-## What Each Script Does
+### Start Training Pipeline:
+```bash
+# Using CLI command
+aichat-training --mode serve
 
-### `start_backend.py` / `start_backend.bat`
+# Alternative: Direct Python module
+python -m aichat.cli.training
+```
+
+## CLI Commands Overview
+
+### `aichat-backend`
 - Starts the FastAPI backend server on `localhost:8765`
-- Includes auto-reload for development
-- Handles virtual environment activation (if present)
-- Shows clear status messages and error handling
+- Supports custom host, port, and reload options
+- Professional logging and error handling
+- Built-in help: `aichat backend --help`
 
-### `start_gui.py` / `start_gui.bat` 
-- Starts the Tkinter GUI application
-- Connects to the backend server
-- Shows system status, chat interface, voice controls, etc.
+### `aichat-frontend`
+- Starts the Tkinter GUI application  
+- Connects to the backend server automatically
+- Shows system status, chat interface, voice controls
+- Built-in help: `aichat frontend --help`
+
+### `aichat-training`
+- Starts the voice training pipeline
+- Supports different modes: ingest, train, serve
+- Built-in help: `aichat training --help`
 
 ## Troubleshooting
 
+### Package Not Installed
+1. **Install package**: `pip install -e .`
+2. **Install with dependencies**: `pip install -e .[dev,gui,training]`
+3. **Virtual environment**: Make sure your venv is activated
+
 ### Backend Won't Start
 1. **Missing dependencies**: `pip install -r requirements.txt`
-2. **Port already in use**: Change port in the uvicorn command
-3. **Import errors**: Make sure you're in the right directory
+2. **Port already in use**: Use `aichat backend --port 8766`
+3. **Import errors**: Ensure package is installed with `pip install -e .`
 
 ### GUI Won't Connect
-1. **Backend not running**: Start backend first in separate terminal
+1. **Backend not running**: Start backend first with `aichat-backend`
 2. **Wrong port**: GUI expects backend on `localhost:8765`
-3. **Firewall issues**: Check Windows firewall settings
+3. **Package not installed**: Run `pip install -e .[gui]`
 
-### Common Error: "ModuleNotFoundError"
+### Common Error: "Command not found"
 ```bash
-# Install missing dependencies
-pip install -r requirements.txt
+# Ensure package is installed
+pip install -e .
 
-# Or install specific missing packages
-pip install librosa uvicorn fastapi pydantic-settings
+# Check if CLI commands are available
+aichat --help
+
+# Alternative: Use Python module syntax
+python -m aichat.cli.main --help
 ```
 
 ## Development Mode
 
-For development, use the backend with `--reload` flag (included in scripts):
+For development with auto-reload:
 ```bash
-cd src
-python -m uvicorn backend.chat_app.main:create_app --factory --host localhost --port 8765 --reload
+aichat backend --reload
 ```
 
-This automatically restarts the server when code changes are detected.
-
-## Production Mode
-
-For production, remove the `--reload` flag and consider using:
+For custom host/port:
 ```bash
-cd src  
-python -m uvicorn backend.chat_app.main:create_app --factory --host 0.0.0.0 --port 8765
+aichat backend --host 0.0.0.0 --port 8765 --reload
 ```
 
-## File Structure
+## Advanced Usage
+
+### Environment Variables
+```bash
+export API_HOST=localhost
+export API_PORT=8765
+export OPENROUTER_API_KEY=your_key_here
 ```
-VtuberMiku/
-├── start_backend.py    # Backend startup script
-├── start_backend.bat   # Windows batch file for backend
-├── start_gui.py        # GUI startup script  
-├── start_gui.bat       # Windows batch file for GUI
-├── requirements.txt    # Python dependencies
-└── src/                # Source code directory
-    ├── backend/        # Backend API code
-    ├── frontend/       # GUI application code
-    └── config.py       # Configuration settings
+
+### Package Structure
+```bash
+aichat/                 # Main package
+├── aichat/            # Python package source
+├── data/              # Application data
+├── config/            # Configuration files
+├── tests/             # Test suites
+└── pyproject.toml     # Package configuration
 ```

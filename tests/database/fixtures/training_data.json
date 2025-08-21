@@ -1,0 +1,29 @@
+[
+    {
+        "id": 1,
+        "filename": "miku_sample_01.wav",
+        "transcript": "Hello everyone! I'm Hatsune Miku!",
+        "duration": 2.5,
+        "speaker": "hatsune_miku",
+        "emotion": "happy",
+        "quality": "high"
+    },
+    {
+        "id": 2,
+        "filename": "miku_sample_02.wav",
+        "transcript": "Let's sing together!",
+        "duration": 1.8,
+        "speaker": "hatsune_miku",
+        "emotion": "excited",
+        "quality": "high"
+    },
+    {
+        "id": 3,
+        "filename": "rin_sample_01.wav",
+        "transcript": "I love oranges so much!",
+        "duration": 2.1,
+        "speaker": "kagamine_rin",
+        "emotion": "cheerful",
+        "quality": "medium"
+    }
+]

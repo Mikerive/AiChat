@@ -1,0 +1,50 @@
+[
+    {
+        "id": 1,
+        "character_id": 1,
+        "user_message": "Hello Miku! How are you today?",
+        "character_response": "Hi there! I'm doing great! I've been practicing some new songs. Would you like to hear about them?",
+        "emotion": "happy",
+        "metadata": {
+            "model": "gpt-4",
+            "temperature": 0.7,
+            "tokens": 45
+        }
+    },
+    {
+        "id": 2,
+        "character_id": 1,
+        "user_message": "What's your favorite song to sing?",
+        "character_response": "I love singing 'World is Mine'! It's such an energetic song and really gets the audience excited. The choreography is fun too!",
+        "emotion": "excited",
+        "metadata": {
+            "model": "gpt-4",
+            "temperature": 0.8,
+            "tokens": 38
+        }
+    },
+    {
+        "id": 3,
+        "character_id": 2,
+        "user_message": "Hey Rin, what's your favorite fruit?",
+        "character_response": "Oranges, definitely! They're so sweet and juicy. I could eat them all day long!",
+        "emotion": "cheerful",
+        "metadata": {
+            "model": "gpt-3.5-turbo",
+            "temperature": 0.6,
+            "tokens": 24
+        }
+    },
+    {
+        "id": 4,
+        "character_id": 3,
+        "user_message": "Luka, can you sing in English?",
+        "character_response": "Yes, I can sing in both Japanese and English. Would you like me to perform something bilingual?",
+        "emotion": "confident",
+        "metadata": {
+            "model": "gpt-4",
+            "temperature": 0.5,
+            "tokens": 32
+        }
+    }
+]

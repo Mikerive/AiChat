@@ -1,84 +1,141 @@
-# Character Interactor & Voice Training Toolkit
+# AI Chat - AI-Powered Chat Application with Voice Cloning
 
-Lightweight, local-first toolkit for building and iterating on persona-driven character agents and training custom text-to-speech (TTS) voices. The codebase combines a FastAPI backend (chat, TTS orchestration, voice fine-tuning hooks), an optional Tkinter debug GUI, and a voice finetune pipeline.
+Modern Python package for building AI-powered character agents with voice cloning capabilities. Features a FastAPI backend, optional Tkinter GUI, and comprehensive voice training pipeline.
 
-Overview
-- Character interactor: persona management, chat endpoints, conversation memory.
-- Voice training pipeline: ingest → segmentation → transcription → Piper manifest → fine-tune.
-- REST API and WebSocket event stream for realtime integrations.
-- Optional local GUI for monitoring and control.
+## Overview
+- **Character AI**: Persona management, chat endpoints, conversation memory
+- **Voice Training**: Audio ingest → segmentation → transcription → Piper training
+- **REST API**: WebSocket event stream for real-time integrations
+- **GUI Interface**: Optional Tkinter interface for monitoring and control
 
-Quickstart
+## Quick Start
 
-Prerequisites
+### Prerequisites
 - Python 3.8+
-- FFmpeg (for audio extraction)
-- Optional: CUDA-capable GPU for faster Whisper / PyTorch operations
+- FFmpeg (for audio processing)
+- Optional: CUDA-capable GPU for faster inference
 
-Install
-1. Clone the repository
+### Installation
+1. **Clone the repository**
+   ```bash
    git clone <repository-url>
+   cd <repository-name>
+   ```
 
-2. Create virtual environment
+2. **Create virtual environment**
+   ```bash
    python -m venv venv
-   venv\Scripts\activate    # Windows (cmd)
-   source venv/bin/activate # macOS / Linux
+   venv\Scripts\activate    # Windows
+   source venv/bin/activate # macOS/Linux
+   ```
 
-3. Install dependencies
-   python -m pip install --upgrade pip
-   pip install -r requirements.txt
+3. **Install the package**
+   ```bash
+   pip install -e .                    # Basic installation
+   pip install -e .[dev,gui,training]  # Full installation with all features
+   ```
 
-4. Configure environment
+4. **Configure environment** (optional)
+   ```bash
    cp .env.example .env
-   # Edit `.env` for API_HOST, API_PORT, model paths, and keys (see [`src/config.py`](src/config.py:1))
+   # Edit .env for API keys and configuration
+   ```
 
-Running the project
+### Running the Application
 
-Start backend (recommended; runs FastAPI)
-python start_backend.py
+**Start Backend API Server:**
+```bash
+aichat-backend                           # Basic startup
+aichat backend --host 0.0.0.0 --port 8765 --reload  # Development mode
+```
 
-Developer alternative (runs uvicorn from src)
-cd src
-python -m uvicorn backend.chat_app.main:create_app --factory --host localhost --port 8765 --reload
+**Start GUI Interface:**
+```bash
+aichat-frontend
+```
 
-Start GUI (optional)
-python start_gui.py
+**Start Training Pipeline:**
+```bash
+aichat-training --mode serve
+```
 
-API & WebSocket
-- OpenAPI docs: http://localhost:8765/docs
-- WebSocket endpoint: ws://localhost:8765/api/ws
+**CLI Help:**
+```bash
+aichat --help
+```
 
-Repository layout (high level)
+### API Access
+- **OpenAPI docs**: http://localhost:8765/docs
+- **WebSocket endpoint**: ws://localhost:8765/api/ws
 
-Top-level
-- [`start_backend.py`](start_backend.py:1) — convenience script to start backend
-- [`start_gui.py`](start_gui.py:1) — convenience script to start GUI
-- [`main.py`](main.py:1) — main entrypoint used in some launch modes
-- [`requirements.txt`](requirements.txt:1)
-- [`README_STARTUP.md`](README_STARTUP.md:1) — startup notes and tips
+## Package Structure
 
-Source (src/)
-- [`src/backend/chat_app/`](src/backend/chat_app:1) — FastAPI application, routes, and services
-  - routes: [`src/backend/chat_app/routes/`](src/backend/chat_app/routes:1)
-  - services: [`src/backend/chat_app/services/`](src/backend/chat_app/services:1)
-  - audio & model assets: [`src/backend/chat_app/audio/`](src/backend/chat_app/audio:1)
-- [`src/backend/tts_finetune_app/`](src/backend/tts_finetune_app:1) — TTS finetune pipeline (processors, scripts, training_data)
-  - Read the pipeline notes at [`src/backend/tts_finetune_app/README.md`](src/backend/tts_finetune_app/README.md:1)
-- [`src/frontend/`](src/frontend:1) — optional Tkinter GUI and components (see [`src/frontend/gui.py`](src/frontend/gui.py:1))
-- Configuration and utilities: [`src/config.py`](src/config.py:1), [`src/database.py`](src/database.py:1), [`src/event_system.py`](src/event_system.py:1)
+```
+aichat/                               # Main Python package
+├── aichat/                           # Package source code
+│   ├── constants/                    # Centralized constants and paths
+│   ├── core/                         # Core infrastructure (config, database, events)
+│   ├── models/                       # Pydantic schemas and data models
+│   ├── backend/                      # FastAPI web application
+│   │   ├── routes/                   # API endpoints
+│   │   ├── services/                 # Business logic layer
+│   │   │   ├── chat/                 # Chat and voice orchestration
+│   │   │   ├── voice/                # STT/TTS services
+│   │   │   ├── audio/                # Audio processing
+│   │   │   ├── discord/              # Discord integration
+│   │   │   └── llm/                  # Language model services
+│   │   ├── dao/                      # Data access objects
+│   │   └── utils/                    # Utility functions
+│   ├── frontend/                     # Tkinter GUI components
+│   ├── training/                     # Voice training pipeline
+│   ├── logs/                         # Logging microservice
+│   ├── tools/                        # Development tools
+│   └── cli/                          # Command-line interface
+├── tests/                            # Test suites
+├── data/                             # Application data
+├── config/                           # Configuration files
+├── pyproject.toml                    # Modern Python packaging
+└── requirements*.txt                 # Dependencies
+```
 
-Key implementation notes
-- Voice training and manifests are expected under `backend/tts_finetune_app/` (paths referenced throughout routes and services).
-  - training data: [`backend/tts_finetune_app/training_data/`](backend/tts_finetune_app/training_data:1)
-  - model outputs: [`backend/tts_finetune_app/models/`](backend/tts_finetune_app/models:1)
-- Piper runtime models are stored under [`backend/chat_app/audio/piper_models`](backend/chat_app/audio/piper_models:1) and generated audio is written to [`backend/chat_app/audio/generated`](backend/chat_app/audio/generated:1).
-- Several route handlers reference the tts finetune locations — if you rename/move the TTS folder, update references in `src/backend/chat_app/routes/voice.py` and associated services.
+## Key Features
 
-Development
-- Run tests: pytest
-- Format: black .
-- Lint: flake8 .
-- Type check: mypy .
+### Voice Training Pipeline
+The training system processes audio files through:
+1. **Audio ingestion** - Extract and preprocess audio files
+2. **Voice separation** - Isolate vocal tracks using Spleeter
+3. **Segmentation** - Split audio into training clips
+4. **Transcription** - Generate text using Whisper
+5. **Training** - Fine-tune Piper TTS models
+
+### API Integration
+- RESTful endpoints for chat, voice, and system management
+- WebSocket support for real-time events
+- OpenRouter integration for LLM responses
+- Discord bot integration for voice chat
+
+## Development
+
+### Testing
+```bash
+pytest                    # Run all tests
+pytest -v                # Verbose output
+pytest tests/unit        # Run only unit tests
+pytest tests/integration # Run only integration tests
+```
+
+### Code Quality
+```bash
+black .                   # Format code
+flake8 .                  # Lint code
+mypy .                    # Type checking
+isort .                   # Sort imports
+```
+
+### Development Dependencies
+```bash
+pip install -r requirements-dev.txt
+```
 
 Contributing
 1. Fork the repo

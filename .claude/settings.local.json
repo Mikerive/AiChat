@@ -17,7 +17,17 @@
       "Bash(piper:*)",
       "Bash(wget:*)",
       "Bash(echo \"Exit code: $?\")",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(git rebase:*)",
+      "Bash(black:*)",
+      "Bash(flake8:*)",
+      "Bash(autoflake:*)",
+      "Bash(isort:*)",
+      "Bash(vtubermiku:*)",
+      "Bash(find:*)",
+      "Bash(aichat:*)",
+      "Bash(true)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

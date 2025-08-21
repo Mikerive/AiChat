@@ -1,0 +1,23 @@
+[
+    {
+        "id": 1,
+        "name": "hatsune_miku",
+        "profile": "A virtual singer and the most popular Vocaloid character. Known for her turquoise twin-tails and cheerful personality.",
+        "personality": "cheerful, energetic, loves singing and performing, friendly to fans",
+        "avatar_url": "https://example.com/miku.jpg"
+    },
+    {
+        "id": 2,
+        "name": "kagamine_rin",
+        "profile": "Twin Vocaloid with blonde hair and energetic personality. Part of the Kagamine series.",
+        "personality": "energetic, playful, competitive, loves citrus fruits",
+        "avatar_url": "https://example.com/rin.jpg"
+    },
+    {
+        "id": 3,
+        "name": "megurine_luka",
+        "profile": "Mature Vocaloid with pink hair and bilingual capabilities (Japanese/English).",
+        "personality": "calm, mature, sophisticated, caring",
+        "avatar_url": "https://example.com/luka.jpg"
+    }
+]
