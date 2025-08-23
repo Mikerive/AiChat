@@ -1,0 +1,633 @@
+{
+  "test_metadata": {
+    "timestamp": "2025-08-23 13:33:14",
+    "test_type": "Frontend-Backend Integration",
+    "frontend_clients": [
+      "VTuberAPIClient",
+      "BackendClient"
+    ],
+    "backend_framework": "FastAPI",
+    "description": "Tests all routes from the frontend perspective using real API clients"
+  },
+  "test_results": {
+    "system_routes": {
+      "system_status": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "status": "running",
+          "uptime": 21.262938261032104,
+          "cpu_usage": 37.2,
+          "memory_usage": 47.9,
+          "disk_usage": {
+            "total": 1022870155264,
+            "used": 877022969856,
+            "free": 145847185408,
+            "percent": 85.74137835018198
+          },
+          "services": {
+            "api": "running",
+            "websocket": "running",
+            "event_system": "running"
+          }
+        },
+        "error": null
+      },
+      "system_info": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "system": {
+            "platform": "Windows",
+            "platform_version": "10.0.26100",
+            "architecture": "64bit",
+            "processor": "Intel64 Family 6 Model 158 Stepping 10, GenuineIntel",
+            "hostname": "Lucy"
+          },
+          "application": {
+            "name": "VTuber AI Chat System",
+            "version": "1.0.0",
+            "python_version": "3.11.4",
+            "environment": "development"
+          },
+          "features": {
+            "chat": true,
+            "tts": true,
+            "stt": true,
+            "audio_io": true,
+            "websocket": true,
+            "event_system": true,
+            "voice_training": true
+          },
+          "endpoints": {
+            "chat": "/api/chat",
+            "voice": "/api/voice",
+            "system": "/api/system",
+            "websocket": "/api/ws"
+          },
+          "uptime": 21.267946004867554
+        },
+        "error": null
+      }
+    },
+    "chat_routes": {
+      "get_characters": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 1s",
+        "data": [
+          {
+            "id": 1,
+            "name": "hatsune_miku",
+            "profile": "A virtual singer",
+            "personality": "cheerful",
+            "avatar_url": null
+          }
+        ],
+        "error": null
+      },
+      "send_chat_message": {
+        "status_code": 500,
+        "success": false,
+        "response_time": "< 3s",
+        "data": null,
+        "error": "{\"detail\":\"Failed to process message: OpenAIModel.__init__() got an unexpected keyword argument 'api_key'\"}"
+      },
+      "generate_tts": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 5s",
+        "data": {
+          "audio_file": "C:\\Users\\micha\\Desktop\\VtuberMiku\\data\\audio\\generated\\hatsune_miku_aac23319_complete.wav",
+          "audio_format": "wav",
+          "character": "hatsune_miku",
+          "text": "Frontend TTS test",
+          "duration": null,
+          "emotion_used": null,
+          "voice_settings": null,
+          "preset_used": null
+        },
+        "error": null
+      },
+      "switch_character": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "character": "hatsune_miku",
+          "character_name": "hatsune_miku",
+          "greeting": "Switched to hatsune_miku",
+          "status": "switched"
+        },
+        "error": null
+      },
+      "get_chat_history": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "history": [
+            {
+              "id": 1,
+              "character_id": 1,
+              "user_message": "Hi",
+              "character_response": "Hello!",
+              "timestamp": "2024-01-01T00:00:00",
+              "emotion": "happy",
+              "metadata": {}
+            }
+          ]
+        },
+        "error": null
+      }
+    },
+    "voice_routes": {
+      "get_audio_devices": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "input_devices": [
+            {
+              "id": 0,
+              "name": "Microsoft Sound Mapper - Input",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 1,
+              "name": "Microphone (2- Logi USB Headset",
+              "channels": 1,
+              "sample_rate": 44100,
+              "is_default": true
+            },
+            {
+              "id": 2,
+              "name": "VoiceMeeter Output (VB-Audio Vo",
+              "channels": 8,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 3,
+              "name": "Microphone (Virtual Desktop Aud",
+              "channels": 1,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 4,
+              "name": "Headset Microphone (Oculus Virt",
+              "channels": 1,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 5,
+              "name": "Microphone Array (Realtek(R) Au",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 11,
+              "name": "Primary Sound Capture Driver",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 12,
+              "name": "Microphone (2- Logi USB Headset)",
+              "channels": 1,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 13,
+              "name": "VoiceMeeter Output (VB-Audio VoiceMeeter VAIO)",
+              "channels": 8,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 14,
+              "name": "Microphone (Virtual Desktop Audio)",
+              "channels": 1,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 15,
+              "name": "Headset Microphone (Oculus Virtual Audio Device)",
+              "channels": 1,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 16,
+              "name": "Microphone Array (Realtek(R) Audio)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 26,
+              "name": "VoiceMeeter Output (VB-Audio VoiceMeeter VAIO)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 27,
+              "name": "Microphone (Virtual Desktop Audio)",
+              "channels": 1,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 28,
+              "name": "Headset Microphone (Oculus Virtual Audio Device)",
+              "channels": 1,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 29,
+              "name": "Microphone Array (Realtek(R) Audio)",
+              "channels": 2,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 30,
+              "name": "Microphone (2- Logi USB Headset)",
+              "channels": 1,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 31,
+              "name": "Microphone (VDVAD Wave)",
+              "channels": 1,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 33,
+              "name": "Headset Microphone (OCULUSVAD Wave Microphone Headphone)",
+              "channels": 1,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 36,
+              "name": "Input (OCULUSVAD Wave Speaker Headphone)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 38,
+              "name": "Headset (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(T60))",
+              "channels": 1,
+              "sample_rate": 8000,
+              "is_default": false
+            },
+            {
+              "id": 40,
+              "name": "Microphone Array (Realtek HD Audio Mic input)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 41,
+              "name": "VoiceMeeter Output (VoiceMeeter vaio)",
+              "channels": 8,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 44,
+              "name": "Microphone (Logi USB Headset)",
+              "channels": 1,
+              "sample_rate": 44100,
+              "is_default": false
+            }
+          ],
+          "output_devices": [
+            {
+              "id": 6,
+              "name": "Microsoft Sound Mapper - Output",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 7,
+              "name": "Speakers (2- Logi USB Headset)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": true
+            },
+            {
+              "id": 8,
+              "name": "Headphones (Oculus Virtual Audi",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 9,
+              "name": "Speaker/HP (Realtek(R) Audio)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 10,
+              "name": "VoiceMeeter Input (VB-Audio Voi",
+              "channels": 8,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 17,
+              "name": "Primary Sound Driver",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 18,
+              "name": "Speakers (2- Logi USB Headset)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 19,
+              "name": "Headphones (Oculus Virtual Audio Device)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 20,
+              "name": "Speaker/HP (Realtek(R) Audio)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 21,
+              "name": "VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)",
+              "channels": 8,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 22,
+              "name": "Headphones (Oculus Virtual Audio Device)",
+              "channels": 2,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 23,
+              "name": "Speaker/HP (Realtek(R) Audio)",
+              "channels": 2,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 24,
+              "name": "Speakers (2- Logi USB Headset)",
+              "channels": 2,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 25,
+              "name": "VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)",
+              "channels": 2,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 32,
+              "name": "Speakers (VDVAD Wave)",
+              "channels": 8,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 34,
+              "name": "Output 1 (OCULUSVAD Wave Speaker Headphone)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 35,
+              "name": "Output 2 (OCULUSVAD Wave Speaker Headphone)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 37,
+              "name": "Headset (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(T60))",
+              "channels": 1,
+              "sample_rate": 8000,
+              "is_default": false
+            },
+            {
+              "id": 39,
+              "name": "Speakers (Realtek HD Audio output)",
+              "channels": 2,
+              "sample_rate": 48000,
+              "is_default": false
+            },
+            {
+              "id": 42,
+              "name": "Speakers (VoiceMeeter vaio)",
+              "channels": 8,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 43,
+              "name": "Headphones ()",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            },
+            {
+              "id": 45,
+              "name": "Speakers (Logi USB Headset)",
+              "channels": 2,
+              "sample_rate": 44100,
+              "is_default": false
+            }
+          ]
+        },
+        "error": null
+      },
+      "get_audio_status": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "status": "success",
+          "audio_io": {
+            "status": "active",
+            "backend": "pyaudio",
+            "config": {
+              "sample_rate": 16000,
+              "channels": 1,
+              "format": "wav",
+              "volume": 1.0
+            },
+            "devices": {
+              "input": {
+                "count": 24,
+                "current": "Microphone (2- Logi USB Headset",
+                "available": [
+                  "Microsoft Sound Mapper - Input",
+                  "Microphone (2- Logi USB Headset",
+                  "VoiceMeeter Output (VB-Audio Vo",
+                  "Microphone (Virtual Desktop Aud",
+                  "Headset Microphone (Oculus Virt",
+                  "Microphone Array (Realtek(R) Au",
+                  "Primary Sound Capture Driver",
+                  "Microphone (2- Logi USB Headset)",
+                  "VoiceMeeter Output (VB-Audio VoiceMeeter VAIO)",
+                  "Microphone (Virtual Desktop Audio)",
+                  "Headset Microphone (Oculus Virtual Audio Device)",
+                  "Microphone Array (Realtek(R) Audio)",
+                  "VoiceMeeter Output (VB-Audio VoiceMeeter VAIO)",
+                  "Microphone (Virtual Desktop Audio)",
+                  "Headset Microphone (Oculus Virtual Audio Device)",
+                  "Microphone Array (Realtek(R) Audio)",
+                  "Microphone (2- Logi USB Headset)",
+                  "Microphone (VDVAD Wave)",
+                  "Headset Microphone (OCULUSVAD Wave Microphone Headphone)",
+                  "Input (OCULUSVAD Wave Speaker Headphone)",
+                  "Headset (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(T60))",
+                  "Microphone Array (Realtek HD Audio Mic input)",
+                  "VoiceMeeter Output (VoiceMeeter vaio)",
+                  "Microphone (Logi USB Headset)"
+                ]
+              },
+              "output": {
+                "count": 22,
+                "current": "Speakers (2- Logi USB Headset)",
+                "available": [
+                  "Microsoft Sound Mapper - Output",
+                  "Speakers (2- Logi USB Headset)",
+                  "Headphones (Oculus Virtual Audi",
+                  "Speaker/HP (Realtek(R) Audio)",
+                  "VoiceMeeter Input (VB-Audio Voi",
+                  "Primary Sound Driver",
+                  "Speakers (2- Logi USB Headset)",
+                  "Headphones (Oculus Virtual Audio Device)",
+                  "Speaker/HP (Realtek(R) Audio)",
+                  "VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)",
+                  "Headphones (Oculus Virtual Audio Device)",
+                  "Speaker/HP (Realtek(R) Audio)",
+                  "Speakers (2- Logi USB Headset)",
+                  "VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)",
+                  "Speakers (VDVAD Wave)",
+                  "Output 1 (OCULUSVAD Wave Speaker Headphone)",
+                  "Output 2 (OCULUSVAD Wave Speaker Headphone)",
+                  "Headset (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\r\n;(T60))",
+                  "Speakers (Realtek HD Audio output)",
+                  "Speakers (VoiceMeeter vaio)",
+                  "Headphones ()",
+                  "Speakers (Logi USB Headset)"
+                ]
+              }
+            },
+            "activity": {
+              "recording": false,
+              "playback": false
+            }
+          }
+        },
+        "error": null
+      },
+      "set_volume": {
+        "status_code": 200,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "status": "success",
+          "volume": 0.7
+        },
+        "error": null
+      }
+    },
+    "error_handling": {
+      "invalid_character_chat": {
+        "status_code": 404,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "detail": "Character not found"
+        },
+        "error": "{\"detail\":\"Character not found\"}"
+      },
+      "invalid_request_format": {
+        "status_code": 422,
+        "success": true,
+        "response_time": "< 1s",
+        "data": {
+          "detail": [
+            {
+              "type": "missing",
+              "loc": [
+                "body",
+                "text"
+              ],
+              "msg": "Field required",
+              "input": {
+                "invalid_field": "test"
+              }
+            },
+            {
+              "type": "missing",
+              "loc": [
+                "body",
+                "character"
+              ],
+              "msg": "Field required",
+              "input": {
+                "invalid_field": "test"
+              }
+            }
+          ]
+        },
+        "error": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"text\"],\"msg\":\"Field required\",\"input\":{\"invalid_field\":\"test\"}},{\"type\":\"missing\",\"loc\":[\"body\",\"character\"],\"msg\":\"Field required\",\"input\":{\"invalid_field\":\"test\"}}]}"
+      },
+      "nonexistent_endpoint": {
+        "status_code": 404,
+        "success": true,
+        "response_time": "< 1s",
+        "data": null,
+        "error": "{\"detail\":\"Not Found\"}"
+      }
+    }
+  },
+  "summary": {
+    "total_tests": 13,
+    "successful_tests": 12,
+    "failed_tests": 1,
+    "success_rate": "92.3%",
+    "overall_status": "FAIL"
+  }
+}

@@ -9,6 +9,16 @@ from typing import Any, Dict, Optional
 import numpy as np
 import soundfile as sf
 
+# Enhanced VAD integration
+try:
+    from .vad_service import VADService, VADConfig, VADState
+    UNIFIED_VAD_AVAILABLE = True
+except ImportError:
+    UNIFIED_VAD_AVAILABLE = False
+    VADService = None
+    VADConfig = None
+    VADState = None
+
 logger = logging.getLogger(__name__)
 
 # Tunables for STD-DEV based VAD
@@ -185,6 +195,73 @@ def _rms(arr: np.ndarray) -> float:
     if arr.size == 0:
         return 0.0
     return float(np.sqrt(np.mean(np.square(arr))))
+
+
+# Enhanced VAD integration
+_VAD_SERVICE: Optional[VADService] = None
+
+
+def initialize_unified_vad(vad_config: Optional[VADConfig] = None) -> bool:
+    """Initialize the unified VAD service for enhanced voice detection"""
+    global _VAD_SERVICE
+    
+    if not UNIFIED_VAD_AVAILABLE:
+        logger.info("Unified VAD service not available, using legacy VAD")
+        return False
+    
+    try:
+        if vad_config is None:
+            vad_config = VADConfig()
+        
+        _VAD_SERVICE = VADService(vad_config)
+        logger.info("Unified VAD service initialized for streaming STT")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize unified VAD service: {e}")
+        _VAD_SERVICE = None
+        return False
+
+
+def get_enhanced_vad_decision(stream_id: str, audio_data: np.ndarray, sample_rate: int) -> tuple:
+    """Get VAD decision using unified VAD service with fallback to legacy methods"""
+    
+    # Try unified VAD service first
+    if _VAD_SERVICE is not None:
+        try:
+            # Convert numpy array to bytes for VAD service
+            import io
+            buffer = io.BytesIO()
+            sf.write(buffer, audio_data, sample_rate, format='WAV')
+            audio_bytes = buffer.getvalue()
+            
+            # Process with unified VAD
+            vad_result = _VAD_SERVICE.process_audio_stream(stream_id, audio_bytes)
+            
+            if vad_result and vad_result.segments:
+                # Convert VAD result to legacy format
+                has_speech = any(seg.state == VADState.SPEECH for seg in vad_result.segments)
+                confidence = max((seg.confidence for seg in vad_result.segments), default=0.0)
+                return has_speech, confidence, "unified_vad"
+                
+        except Exception as e:
+            logger.debug(f"Unified VAD failed for stream {stream_id}: {e}")
+    
+    # Fallback to Silero VAD
+    if SILERO_AVAILABLE:
+        try:
+            silero_result = get_silero_decision(stream_id)
+            if silero_result:
+                return silero_result.get('has_speech', False), silero_result.get('confidence', 0.0), "silero_vad"
+        except Exception as e:
+            logger.debug(f"Silero VAD failed for stream {stream_id}: {e}")
+    
+    # Final fallback to RMS-based detection
+    chunk_rms = _rms(audio_data)
+    has_speech = chunk_rms > RMS_VOICE_THRESHOLD
+    confidence = min(chunk_rms / RMS_VOICE_THRESHOLD, 1.0) if has_speech else 0.0
+    
+    return has_speech, confidence, "rms_based"
 
 
 def feed_audio(stream_id: str, wav_bytes: bytes) -> Optional[str]:

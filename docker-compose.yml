@@ -1,6 +1,30 @@
 version: "3.8"
 
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: vtuber-backend:latest
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - API_HOST=0.0.0.0
+      - API_PORT=8765
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/api/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   tts_finetune_app:
     build:
       context: .

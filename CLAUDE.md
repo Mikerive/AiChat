@@ -147,3 +147,88 @@ The voice cloning workflow in `src/backend/tts_finetune_app/`:
 - `PIPER_MODEL_PATH`: TTS model file location
 - `LOG_LEVEL`: Logging verbosity (default: "INFO")
 - `DEBUG`: Enable development mode features
+
+## Critical Implementation Rules
+
+### NO PLACEHOLDER CODE
+- **NEVER** create placeholder implementations in any form
+- **NEVER** create stub functions that don't actually work
+- **NEVER** create fake/dummy/mock implementations that appear to work but don't
+- **ALL** code must be fully functional and working implementations
+- If a feature cannot be implemented properly, raise an error or return None rather than fake it
+- Services that generate placeholder data (like silent audio files) must be replaced with real implementations
+
+### STRICT NO-FALLBACK POLICY
+- **NEVER** create fallback responses that mask service failures
+- **NEVER** create methods like `_generate_fallback_response()`, `_create_fallback_audio()`, `_get_fallback_transcription()`, etc.
+- **NEVER** return generic template responses when real services fail (e.g., "I hear you regarding '[message]'. I'm here to listen and help.")
+- **NEVER** create fake audio files, transcriptions, or responses when services are unavailable
+- **ALWAYS** fail fast with proper error codes and meaningful error messages
+- **ALWAYS** raise `RuntimeError` or appropriate exceptions when services cannot function
+- **ALWAYS** emit error events before raising exceptions for debugging purposes
+- **ONLY EXCEPTION**: Hardware fallbacks (CPU vs GPU mode) are acceptable as they represent different operational modes, not masked failures
+
+#### Examples of FORBIDDEN Fallback Patterns:
+```python
+# ❌ NEVER DO THIS - masks service failure
+def generate_response(message):
+    try:
+        return llm_service.generate(message)
+    except Exception:
+        return "I hear you regarding that. Let me think about it."
+
+# ❌ NEVER DO THIS - creates fake audio
+def generate_tts(text):
+    try:
+        return tts_service.generate(text)
+    except Exception:
+        return create_silent_audio_file()
+
+# ✅ CORRECT - fails honestly with proper error
+def generate_response(message):
+    try:
+        return llm_service.generate(message)
+    except Exception as e:
+        logger.error(f"LLM service failed: {e}")
+        raise RuntimeError(f"Chat response generation failed: {e}")
+```
+
+### WHY NO FALLBACKS?
+- Fallbacks create false confidence in broken systems
+- Users get confused by fake responses that don't reflect actual service status
+- Debugging becomes impossible when failures are masked
+- Applications can't properly handle service outages
+- Error conditions go undetected in production
+- Services appear to work when they're actually broken
+
+### COST-CONSCIOUS MODEL SELECTION
+- **NEVER** use expensive models like Claude-3.5-Sonnet, Claude-3-Opus, GPT-4 Turbo
+- **ALWAYS** prioritize FREE models: OpenRouter free tier, Groq, Together AI free models
+- **PREFER** cheap models: GPT-4o-mini ($0.15/1M tokens), GPT-3.5-turbo ($0.50/1M tokens)
+- **DEFAULT** OpenRouter model: `cognitivecomputations/dolphin-mistral-24b-venice-edition:free`
+- **AVOID** Claude models entirely - they are extremely expensive ($3-15/1M tokens)
+- **USE** environment variables to override model selection for cost control
+
+#### Current Cheap Model Priority:
+1. **FREE**: OpenRouter free models (dolphin-mistral, llama-3.2)  
+2. **CHEAP**: GPT-4o-mini, GPT-3.5-turbo
+3. **BUDGET**: Groq Llama models, Together AI free tier
+
+### CENTRALIZED MODEL CONFIGURATION
+- **SINGLE SOURCE**: All model selection managed in `aichat/backend/services/llm/model_config.py`
+- **NO SCATTERED MODELS**: Never define models in individual services anymore
+- **COST VISIBILITY**: All models show cost per 1M tokens in logs
+- **ENVIRONMENT OVERRIDE**: Use `DEFAULT_LLM_MODEL=openrouter-dolphin-free` in .env to override
+- **AUTOMATIC DETECTION**: Detects available API keys and prioritizes cheapest models
+- **TIER SYSTEM**: Models categorized as FREE, CHEAP, BUDGET, EXPENSIVE (avoid expensive!)
+
+#### Usage:
+```python
+from aichat.backend.services.llm.model_config import model_config
+
+# Get the cheapest available model automatically
+default_model = model_config.get_default_model()
+
+# Get cost summary for all available models  
+print(model_config.get_cost_summary())
+```

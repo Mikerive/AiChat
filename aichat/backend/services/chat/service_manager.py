@@ -98,7 +98,7 @@ class ServiceFactory:
                 "whisper": self._create_whisper_service,
                 "voice": self._create_voice_service,
                 "chat": self._create_chat_service,
-                "piper_tts": self._create_piper_tts_service,
+                "chatterbox_tts": self._create_chatterbox_tts_service,
                 "openrouter": self._create_openrouter_service,
                 "tts_finetune": self._create_tts_finetune_service,
                 "discord": self._create_discord_service,
@@ -152,7 +152,7 @@ class ServiceFactory:
 
     def _create_whisper_service(self, config: WhisperConfig):
         """Factory function for WhisperService"""
-        from ..stt_services.whisper_service import WhisperService
+        from ..voice.stt.whisper_service import WhisperService
 
         return WhisperService(model_name=config.model_name)
 
@@ -168,21 +168,21 @@ class ServiceFactory:
 
         return ChatService()
 
-    def _create_piper_tts_service(self, config: ServiceConfig):
-        """Factory function for PiperTTSService"""
-        from ..tts_services.piper_tts_service import PiperTTSService
+    def _create_chatterbox_tts_service(self, config: ServiceConfig):
+        """Factory function for ChatterboxTTSService"""
+        from ..voice.tts.chatterbox_tts_service import ChatterboxTTSService
 
-        return PiperTTSService()
+        return ChatterboxTTSService()
 
     def _create_openrouter_service(self, config: ServiceConfig):
         """Factory function for OpenRouterService"""
-        from ..llm_services.openrouter_service import OpenRouterService
+        from ..llm.openrouter_service import OpenRouterService
 
         return OpenRouterService()
 
     def _create_tts_finetune_service(self, config: ServiceConfig):
         """Factory function for TTSFinetuneService"""
-        from ..tts_services.tts_finetune_service import TTSFinetuneService
+        from ..voice.tts.tts_finetune_service import TTSFinetuneService
 
         return TTSFinetuneService()
 
@@ -206,8 +206,8 @@ class ServiceFactory:
 
     def _create_vad_service(self, config: VADConfig):
         """Factory function for VADService"""
-        from ..audio_services.vad_service import VADConfig as VADServiceConfig
-        from ..audio_services.vad_service import (
+        from ..voice.stt.vad_service import VADConfig as VADServiceConfig
+        from ..voice.stt.vad_service import (
             VADSensitivity,
             VADService,
         )
@@ -239,7 +239,7 @@ class ServiceFactory:
             "whisper": WhisperConfig(name="whisper_default"),
             "voice": VoiceConfig(name="voice_default"),
             "chat": ServiceConfig(name="chat_default"),
-            "piper_tts": ServiceConfig(name="piper_tts_default"),
+            "chatterbox_tts": ServiceConfig(name="chatterbox_tts_default"),
             "openrouter": ServiceConfig(name="openrouter_default"),
             "tts_finetune": ServiceConfig(name="tts_finetune_default"),
             "discord": DiscordConfig(name="discord_default"),
@@ -354,9 +354,9 @@ def get_chat_service() -> Any:
     return get_service_factory().get_service("chat")
 
 
-def get_piper_tts_service() -> Any:
-    """Get PiperTTSService with default configuration"""
-    return get_service_factory().get_service("piper_tts")
+def get_chatterbox_tts_service() -> Any:
+    """Get ChatterboxTTSService with default configuration"""
+    return get_service_factory().get_service("chatterbox_tts")
 
 
 def get_openrouter_service() -> Any:

@@ -20,25 +20,12 @@ except ImportError:
     discord = None
     commands = None
 
-try:
-    from aichat.core.event_system import EventSeverity, EventType, get_event_system
-except ImportError:
-    # Fallback for when imports aren't available
-    def get_event_system():
-        class MockEventSystem:
-            async def emit(self, *args, **kwargs):
-                pass
-
-        return MockEventSystem()
-
-    class EventType:
-        WEBSOCKET_CONNECTED = "websocket_connected"
-        WEBSOCKET_DISCONNECTED = "websocket_disconnected"
-        ERROR_OCCURRED = "error_occurred"
-        AUDIO_TRANSCRIBED = "audio_transcribed"
-
-    class EventSeverity:
-        ERROR = "error"
+from aichat.core.event_system import EventSeverity, EventType, get_event_system
+from .config import DiscordConfig
+from .user_tracker import UserTracker, DiscordUser
+from .voice_receiver import VoiceReceiver, AudioFrame
+from .audio_processor import AudioProcessor, TranscriptionResult
+from ..voice.stt.vad_service import SpeechSegment
 
 
 logger = logging.getLogger(__name__)

@@ -6,7 +6,7 @@ import logging
 from typing import Any, Dict, Optional
 from pathlib import Path
 
-from aichat.constants.paths import AUDIO_OUTPUT, TTS_MODELS_DIR, ensure_dirs
+from aichat.constants.paths import GENERATED_AUDIO_DIR, TTS_MODELS_DIR, ensure_dirs
 from aichat.core.event_system import EventSeverity, EventType, get_event_system
 
 from ..io_services.audio_io_service import AudioIOService
@@ -76,7 +76,7 @@ class VoiceService:
         """Generate text-to-speech audio using Piper"""
         try:
             # Generate audio directory (centralized)
-            audio_dir = AUDIO_OUTPUT
+            audio_dir = GENERATED_AUDIO_DIR
             ensure_dirs(audio_dir)
 
             # Create output filename

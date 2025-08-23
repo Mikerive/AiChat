@@ -11,12 +11,7 @@ across multiple IO services and components:
 """
 
 from .audio_enhancement_service import AudioEnhancementService
-from .vad_service import SpeechSegment, VADConfig, VADResult, VADService
 
 __all__ = [
-    "VADService",
-    "VADConfig",
-    "VADResult",
-    "SpeechSegment",
     "AudioEnhancementService",
 ]

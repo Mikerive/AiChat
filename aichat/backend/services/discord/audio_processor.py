@@ -9,8 +9,11 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from .voice_receiver import AudioFrame
 
 try:
     import numpy as np
@@ -22,31 +25,11 @@ except ImportError:
     np = None
     sf = None
 
-try:
-    from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
-    from aichat.core.event_system import EventSeverity, EventType, get_event_system
-except ImportError:
-    # Fallback for when imports aren't available
-    TEMP_AUDIO_DIR = Path("temp_audio")
-
-    def ensure_dirs(*paths):
-        for path in paths:
-            Path(path).mkdir(parents=True, exist_ok=True)
-
-    def get_event_system():
-        class MockEventSystem:
-            async def emit(self, *args, **kwargs):
-                pass
-
-        return MockEventSystem()
-
-    class EventType:
-        AUDIO_TRANSCRIBED = "audio_transcribed"
-        AUDIO_PROCESSED = "audio_processed"
-        ERROR_OCCURRED = "error_occurred"
-
-    class EventSeverity:
-        ERROR = "error"
+from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
+from aichat.core.event_system import EventSeverity, EventType, get_event_system
+from ..voice.stt.vad_service import SpeechSegment
+from .config import DiscordConfig
+from .user_tracker import UserTracker, DiscordUser
 
 
 logger = logging.getLogger(__name__)
@@ -451,7 +434,7 @@ class AudioProcessor:
         except Exception as e:
             logger.error(f"Error processing user message: {e}")
 
-    async def process_audio_frame(self, frame: AudioFrame):
+    async def process_audio_frame(self, frame: "AudioFrame"):
         """Process real-time audio frame (for immediate feedback)"""
         try:
             # This could be used for real-time processing, voice commands, etc.
@@ -518,10 +501,10 @@ class AudioBuffer:
 
     def __init__(self, max_duration: float = 10.0):
         self.max_duration = max_duration
-        self.frames: List[AudioFrame] = []
+        self.frames: List["AudioFrame"] = []
         self.total_duration = 0.0
 
-    def add_frame(self, frame: AudioFrame):
+    def add_frame(self, frame: "AudioFrame"):
         """Add audio frame to buffer"""
         self.frames.append(frame)
         self.total_duration += frame.duration

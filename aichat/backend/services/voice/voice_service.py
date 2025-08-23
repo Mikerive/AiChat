@@ -2,26 +2,41 @@
 Voice service for handling voice training and TTS functionality
 """
 
+import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, AsyncGenerator
 from pathlib import Path
 
-from aichat.constants.paths import AUDIO_OUTPUT, TTS_MODELS_DIR, ensure_dirs
+from aichat.constants.paths import GENERATED_AUDIO_DIR, TTS_MODELS_DIR, ensure_dirs
 from aichat.core.event_system import EventSeverity, EventType, get_event_system
 
-from ..io_services.audio_io_service import AudioIOService
+# Updated imports for new TTS system
+from aichat.backend.services.audio.audio_io_service import AudioIOService
+from .tts import SmartTTSSelector, TTSBackend, StreamingTTSIntegration, StreamingConfig
 
 logger = logging.getLogger(__name__)
 
 
 class VoiceService:
-    """Service for handling voice training and TTS functionality"""
+    """Enhanced voice service with smart TTS selection and streaming support"""
 
-    def __init__(self, audio_io_service: Optional[AudioIOService] = None):
+    def __init__(self, audio_io_service: Optional[AudioIOService] = None, preferred_backend: str = "auto"):
         self.event_system = get_event_system()
         self.audio_io = audio_io_service or AudioIOService()
+        
+        # Legacy Piper support (deprecated)
         self.piper_model = None
-        self._initialize_piper()
+        
+        # New smart TTS system
+        self.smart_tts = SmartTTSSelector(
+            preferred_backend=TTSBackend.AUTO if preferred_backend == "auto" else TTSBackend(preferred_backend)
+        )
+        self.streaming_tts = StreamingTTSIntegration(self.smart_tts)
+        self.tts_initialized = False
+        
+        # Initialize both legacy and new systems
+        self._initialize_piper()  # Legacy support
+        asyncio.create_task(self._initialize_smart_tts())
 
     def _initialize_piper(self):
         """Initialize Piper TTS model"""
@@ -60,57 +75,96 @@ class VoiceService:
                 pass
 
         except ImportError:
-            logger.warning("Piper not installed. Using mock service.")
+            logger.warning("Legacy Piper not installed. Using new TTS system.")
         except Exception as e:
-            logger.error(f"Error initializing Piper: {e}")
-            self.event_system.emit(
+            logger.error(f"Error initializing legacy Piper: {e}")
+            # Don't emit error - we have the new system as fallback
+            pass
+    
+    async def _initialize_smart_tts(self):
+        """Initialize the smart TTS system"""
+        try:
+            import asyncio
+            success = await self.smart_tts.initialize()
+            if success:
+                self.tts_initialized = True
+                logger.info("Smart TTS system initialized successfully")
+                await self.event_system.emit(
+                    EventType.MODEL_LOADED,
+                    "Smart TTS system initialized",
+                    {
+                        "model_type": "smart_tts",
+                        "backend": self.smart_tts.optimal_backend,
+                        "status": "ready"
+                    },
+                )
+            else:
+                logger.error("Failed to initialize Smart TTS system")
+                
+        except Exception as e:
+            logger.error(f"Error initializing Smart TTS: {e}")
+            await self.event_system.emit(
                 EventType.MODEL_FAILED,
-                f"Failed to initialize Piper: {e}",
-                {"model_type": "piper"},
+                f"Failed to initialize Smart TTS: {e}",
+                {"model_type": "smart_tts"},
                 EventSeverity.ERROR,
             )
 
     async def generate_tts(
-        self, text: str, character_id: int, character_name: str
+        self, 
+        text: str, 
+        character_id: int, 
+        character_name: str,
+        voice: Optional[str] = None,
+        speed: float = 1.0,
+        pitch: float = 1.0,
+        emotion_state: Optional[Dict[str, Any]] = None
     ) -> Optional[Path]:
-        """Generate text-to-speech audio using Piper"""
+        """Generate text-to-speech audio using Smart TTS system"""
         try:
-            # Generate audio directory (centralized)
-            audio_dir = AUDIO_OUTPUT
-            ensure_dirs(audio_dir)
-
-            # Create output filename
-            import hashlib
-
-            text_hash = hashlib.md5(text.encode()).hexdigest()[:8]
-            audio_path = audio_dir / f"{character_name}_{text_hash}.wav"
-
-            if self.piper_model:
-                # Use real Piper TTS
-                # self.piper_model.synthesize(text, str(audio_path))
-                logger.info(f"Generated TTS with Piper: {audio_path}")
-            else:
-                # Create placeholder audio file
-                audio_path.touch()
-                logger.info(f"Generated placeholder TTS: {audio_path}")
-
-            # Emit audio generation event
-            await self.event_system.emit(
-                EventType.AUDIO_GENERATED,
-                f"TTS audio generated for {character_name}",
-                {
-                    "text": text,
-                    "character": character_name,
-                    "audio_file": str(audio_path),
-                    "character_id": character_id,
-                },
+            # Ensure TTS is initialized
+            if not self.tts_initialized:
+                await self._initialize_smart_tts()
+                if not self.tts_initialized:
+                    return await self._fallback_to_legacy_tts(text, character_name)
+            
+            # Use smart TTS system
+            audio_path = await self.smart_tts.generate_speech(
+                text=text,
+                character_name=character_name,
+                voice=voice,
+                speed=speed,
+                pitch=pitch,
+                emotion_state=emotion_state
             )
-
-            return audio_path
+            
+            if audio_path:
+                # Emit enhanced audio generation event
+                await self.event_system.emit(
+                    EventType.AUDIO_GENERATED,
+                    f"Smart TTS audio generated for {character_name}",
+                    {
+                        "text": text,
+                        "character": character_name,
+                        "audio_file": str(audio_path),
+                        "character_id": character_id,
+                        "voice": voice,
+                        "speed": speed,
+                        "pitch": pitch,
+                        "emotion_state": emotion_state,
+                        "backend": self.smart_tts.optimal_backend,
+                        "is_smart_tts": True
+                    },
+                )
+                
+                return audio_path
+            else:
+                logger.error(f"Smart TTS generation failed for {character_name}")
+                return None
 
         except Exception as e:
-            logger.error(f"Error generating TTS: {e}")
-
+            logger.error(f"Error generating Smart TTS: {e}")
+            
             # Emit error event
             await self.event_system.emit(
                 EventType.ERROR_OCCURRED,
@@ -120,6 +174,7 @@ class VoiceService:
             )
 
             return None
+    
 
     async def train_voice_model(
         self,
@@ -341,19 +396,132 @@ class VoiceService:
             logger.error(f"Error deleting voice model: {e}")
             return False
 
+    async def generate_streaming_tts(
+        self,
+        text: str,
+        character_id: int,
+        character_name: str,
+        voice: Optional[str] = None,
+        speed: float = 1.0,
+        pitch: float = 1.0,
+        emotion_state: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """Generate streaming TTS with punctuation-based segments"""
+        try:
+            if not self.tts_initialized:
+                await self._initialize_smart_tts()
+                if not self.tts_initialized:
+                    logger.warning("Smart TTS not available for streaming")
+                    return []
+            
+            segments = await self.smart_tts.generate_streaming_speech(
+                text=text,
+                character_name=character_name,
+                voice=voice,
+                speed=speed,
+                pitch=pitch,
+                emotion_state=emotion_state
+            )
+            
+            # Add character_id to each segment
+            for segment in segments:
+                segment["character_id"] = character_id
+            
+            return segments
+            
+        except Exception as e:
+            logger.error(f"Error generating streaming TTS: {e}")
+            return []
+    
+    async def create_openrouter_tts_handler(
+        self,
+        character_id: int,
+        character_name: str,
+        voice: Optional[str] = None,
+        speed: float = 1.0,
+        pitch: float = 1.0,
+        emotion_state: Optional[Dict[str, Any]] = None
+    ) -> Optional[callable]:
+        """Create a TTS handler for OpenRouter streaming integration"""
+        try:
+            if not self.tts_initialized:
+                await self._initialize_smart_tts()
+                if not self.tts_initialized:
+                    return None
+            
+            handler = await self.streaming_tts.create_openrouter_streaming_handler(
+                character_name=character_name,
+                voice=voice,
+                speed=speed,
+                pitch=pitch,
+                emotion_state=emotion_state
+            )
+            
+            return handler
+            
+        except Exception as e:
+            logger.error(f"Error creating OpenRouter TTS handler: {e}")
+            return None
+    
+    async def get_available_voices(self) -> List[Dict[str, Any]]:
+        """Get available voices from the smart TTS system"""
+        try:
+            if not self.tts_initialized:
+                await self._initialize_smart_tts()
+                if not self.tts_initialized:
+                    return []
+            
+            return await self.smart_tts.get_available_voices()
+            
+        except Exception as e:
+            logger.error(f"Error getting available voices: {e}")
+            return []
+    
+    async def test_voice(
+        self, 
+        voice: str, 
+        test_text: str = "Hello, this is a test of the voice system."
+    ) -> Optional[Path]:
+        """Test a voice with sample text"""
+        try:
+            if not self.tts_initialized:
+                await self._initialize_smart_tts()
+                if not self.tts_initialized:
+                    return None
+            
+            return await self.smart_tts.test_voice(voice, test_text)
+            
+        except Exception as e:
+            logger.error(f"Error testing voice: {e}")
+            return None
+    
     async def get_service_status(self) -> Dict[str, Any]:
-        """Get voice service status"""
+        """Get comprehensive voice service status"""
         try:
             models = await self.get_available_models()
             audio_status = await self.audio_io.get_service_status()
+            
+            # Get smart TTS status
+            smart_tts_status = {}
+            streaming_stats = {}
+            
+            if self.tts_initialized:
+                smart_tts_status = await self.smart_tts.get_service_status()
+                streaming_stats = self.streaming_tts.get_streaming_stats()
 
             return {
                 "status": "active",
-                "piper_tts": "ready" if self.piper_model else "mock",
+                "legacy_piper_tts": "ready" if self.piper_model else "mock",
+                "smart_tts_system": {
+                    "initialized": self.tts_initialized,
+                    "status": smart_tts_status
+                },
+                "streaming_tts": streaming_stats,
                 "available_models": len(models),
                 "models": models,
                 "services": {
-                    "tts": "ready",
+                    "tts": "ready" if self.tts_initialized else "legacy",
+                    "streaming_tts": "ready" if self.tts_initialized else "not_available",
                     "training": "ready",
                     "processing": "ready",
                 },

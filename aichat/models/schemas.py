@@ -688,3 +688,168 @@ class ConversationAnalysis(BaseModel):
         if v < 0.0 or v > 1.0:
             raise ValueError("engagement_score must be between 0.0 and 1.0")
         return v
+
+
+# Additional Response Models for API Endpoints
+
+class CharacterSwitchResponse(BaseModel):
+    """Character switch operation response"""
+    
+    character: str
+    character_name: str
+    greeting: str
+    status: str
+
+
+class AudioDeviceInfo(BaseModel):
+    """Audio device information"""
+    
+    id: int
+    name: str
+    channels: int
+    sample_rate: int
+    is_default: bool
+
+
+class AudioDevicesResponse(BaseModel):
+    """Audio devices list response"""
+    
+    input_devices: List[AudioDeviceInfo]
+    output_devices: List[AudioDeviceInfo]
+
+
+class AudioDeviceSetResponse(BaseModel):
+    """Audio device set operation response"""
+    
+    status: str
+    device_id: int
+
+
+class AudioRecordResponse(BaseModel):
+    """Audio recording response"""
+    
+    status: str
+    audio_path: str
+    duration: float
+    file_size: int
+    audio_info: Dict[str, Any]
+
+
+class AudioPlayResponse(BaseModel):
+    """Audio playback response"""
+    
+    status: str
+    audio_path: str
+
+
+class AudioVolumeResponse(BaseModel):
+    """Audio volume set response"""
+    
+    status: str
+    volume: float
+
+
+class AudioInfoResponse(BaseModel):
+    """Audio file information response"""
+    
+    status: str
+    audio_info: Dict[str, Any]
+
+
+class AudioIOStatusResponse(BaseModel):
+    """Audio IO service status response"""
+    
+    status: str
+    audio_io: Dict[str, Any]
+
+
+class RecordTranscribeResponse(BaseModel):
+    """Record and transcribe response"""
+    
+    status: str
+    transcription: Dict[str, Any]
+
+
+class JobCheckpointResponse(BaseModel):
+    """Training job checkpoint response"""
+    
+    job_id: str
+    checkpoint: Dict[str, Any]
+
+
+class JobLogsResponse(BaseModel):
+    """Training job logs response"""
+    
+    job_id: str
+    log_file: str
+    tail: str
+
+
+class SystemStatusResponse(BaseModel):
+    """System status response"""
+    
+    backend: str
+    chat_service: str
+    current_character: Dict[str, Optional[str]]
+    models: Dict[str, str]
+
+
+class WebhookListResponse(BaseModel):
+    """Webhook list response"""
+    
+    webhooks: List[str]
+
+
+class WebhookOperationResponse(BaseModel):
+    """Webhook operation response"""
+    
+    status: str
+    message: str
+
+
+class TestEventResponse(BaseModel):
+    """Test event emission response"""
+    
+    status: str
+    message: str
+
+
+class SileroVADResponse(BaseModel):
+    """Silero VAD test response"""
+    
+    session: Dict[str, Any]
+    silero: Dict[str, Any]
+
+
+class ChatHistoryResponse(BaseModel):
+    """Chat history response"""
+    
+    history: List[Dict[str, Any]]
+
+
+class ChatterboxStatusResponse(BaseModel):
+    """Chatterbox TTS service status response"""
+    
+    service: str
+    device: str
+    device_info: Dict[str, Any]
+    model_loaded: bool
+    default_voice: str
+    supports_streaming: bool
+    punctuation_pauses: Dict[str, float]
+    status: str
+    audio_io: Dict[str, Any]
+    cpu_fallback: bool
+    performance_mode: str
+
+
+class IntensityStreamingResponse(BaseModel):
+    """Intensity-first streaming response"""
+    
+    character: str
+    total_chunks: int
+    exaggeration_used: float
+    intensity_description: str
+    audio_segments: List[Dict[str, Any]]
+    processing_time: float
+    device_info: Dict[str, Any]

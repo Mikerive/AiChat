@@ -14,12 +14,18 @@ from aichat.models.schemas import Character as CharacterSchema
 from aichat.models.schemas import (
     CharacterResponse,
     CharacterSwitch,
+    CharacterSwitchResponse,
     ChatMessage,
+    ChatHistoryResponse,
+    SystemStatusResponse,
     TTSRequest,
+    TTSResponse,
+    STTResponse,
 )
-from aichat.backend.services.chat.service_manager import (
+from aichat.backend.services.di_container import (
     get_chat_service,
-    get_whisper_service,
+    get_whisper_service, 
+    get_chatterbox_tts_service,
 )
 from aichat.core.database import db_ops
 from aichat.core.event_system import EventType, emit_chat_response, get_event_system
@@ -37,6 +43,11 @@ def get_chat_service_dep():
 def get_whisper_service_dep():
     """Dependency injection for whisper service"""
     return get_whisper_service()
+
+
+def get_chatterbox_tts_service_dep():
+    """Dependency injection for ChatterboxTTS service"""
+    return get_chatterbox_tts_service()
 
 
 @router.get("/characters", response_model=List[CharacterSchema])
@@ -133,7 +144,7 @@ async def chat_with_character(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/switch_character")
+@router.post("/switch_character", response_model=CharacterSwitchResponse)
 async def switch_character(
     request: CharacterSwitch, chat_service=Depends(get_chat_service_dep)
 ):
@@ -156,12 +167,12 @@ async def switch_character(
             {"character_id": character.id, "character_name": request.character},
         )
 
-        return {
-            "character": request.character,
-            "character_name": character.name,
-            "greeting": f"Switched to {request.character}",
-            "status": "switched",
-        }
+        return CharacterSwitchResponse(
+            character=request.character,
+            character_name=character.name,
+            greeting=f"Switched to {request.character}",
+            status="switched"
+        )
 
     except HTTPException:
         raise
@@ -170,30 +181,31 @@ async def switch_character(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/tts")
+@router.post("/tts", response_model=TTSResponse)
 async def text_to_speech(
-    request: TTSRequest, chat_service=Depends(get_chat_service_dep)
+    request: TTSRequest, tts_service=Depends(get_chatterbox_tts_service_dep)
 ):
-    """Generate text-to-speech audio"""
+    """Generate text-to-speech audio using ChatterboxTTS with improved segmentation"""
     try:
         # Get character
         character = await db_ops.get_character_by_name(request.character)
         if not character:
             raise HTTPException(status_code=404, detail="Character not found")
 
-        # Generate TTS audio
-        audio_path = await chat_service.generate_tts(
-            request.text, character.id, request.character
+        # Generate TTS audio using ChatterboxTTS directly
+        audio_path = await tts_service.generate_speech(
+            text=request.text,
+            character_name=request.character,
+            voice=None,  # Use default voice
+            exaggeration=0.8  # Slightly more expressive
         )
 
-        return {
-            "text": request.text,
-            "character": request.character,
-            "character_name": character.name,
-            "audio_file": str(audio_path) if audio_path else None,
-            "audio_format": "wav",
-            "status": "generated",
-        }
+        return TTSResponse(
+            audio_file=str(audio_path) if audio_path else "",
+            audio_format="wav",
+            character=request.character,
+            text=request.text
+        )
 
     except HTTPException:
         raise
@@ -202,7 +214,41 @@ async def text_to_speech(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/stt")
+@router.post("/tts/streaming")
+async def text_to_speech_streaming(
+    request: TTSRequest, tts_service=Depends(get_chatterbox_tts_service_dep)
+):
+    """Generate streaming text-to-speech audio with sentence-based segmentation"""
+    try:
+        # Get character
+        character = await db_ops.get_character_by_name(request.character)
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+
+        # Generate streaming TTS segments
+        segments = await tts_service.generate_streaming_speech(
+            text=request.text,
+            character_name=request.character,
+            voice=None,
+            exaggeration=0.8
+        )
+
+        return {
+            "status": "success",
+            "character": request.character,
+            "text": request.text,
+            "segments": segments,
+            "total_segments": len(segments)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Streaming TTS error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/stt", response_model=STTResponse)
 async def speech_to_text(
     file: UploadFile = File(...), whisper_service=Depends(get_whisper_service_dep)
 ):
@@ -222,19 +268,19 @@ async def speech_to_text(
         # Clean up temp file
         temp_file.unlink()
 
-        return {
-            "text": result["text"],
-            "language": result["language"],
-            "confidence": result["confidence"],
-            "processing_time": result["processing_time"],
-        }
+        return STTResponse(
+            text=result["text"],
+            language=result["language"],
+            confidence=result["confidence"],
+            processing_time=result.get("processing_time", 0.0)
+        )
 
     except Exception as e:
         logger.error(f"STT error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/chat/history")
+@router.get("/chat/history", response_model=ChatHistoryResponse)
 async def get_chat_history(
     character_id: Optional[int] = None,
     limit: int = 100,
@@ -243,8 +289,8 @@ async def get_chat_history(
     """Get chat history"""
     try:
         chat_logs = await db_ops.get_chat_logs(character_id=character_id, limit=limit)
-        return {
-            "history": [
+        return ChatHistoryResponse(
+            history=[
                 {
                     "id": log.id,
                     "character_id": log.character_id,
@@ -256,27 +302,27 @@ async def get_chat_history(
                 }
                 for log in chat_logs
             ]
-        }
+        )
     except Exception as e:
         logger.error(f"Error getting chat history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/status")
+@router.get("/status", response_model=SystemStatusResponse)
 async def get_chat_status(chat_service=Depends(get_chat_service_dep)):
     """Get chat system status"""
     try:
         current_character = await chat_service.get_current_character()
 
-        return {
-            "backend": "running",
-            "chat_service": "active",
-            "current_character": {
-                "id": current_character["id"] if current_character else None,
+        return SystemStatusResponse(
+            backend="running",
+            chat_service="active",
+            current_character={
+                "id": str(current_character["id"]) if current_character and current_character.get("id") else None,
                 "name": current_character["name"] if current_character else None,
             },
-            "models": {"whisper": "loaded", "tts": "ready"},
-        }
+            models={"whisper": "loaded", "tts": "ready"}
+        )
     except Exception as e:
         logger.error(f"Error getting chat status: {e}")
         raise HTTPException(status_code=500, detail=str(e))

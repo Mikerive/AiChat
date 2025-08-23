@@ -132,11 +132,8 @@ class UnifiedLLMService:
                 result["provider_used"] = "openrouter"
 
             else:
-                # Should not reach here, but fallback
-                result = await self._generate_fallback_response(
-                    message, character_name, character_personality
-                )
-                result["provider_used"] = "fallback"
+                # Should not reach here - no valid provider
+                raise RuntimeError("No valid LLM provider available")
 
             # Emit success event
             await self.event_system.emit(
@@ -168,10 +165,8 @@ class UnifiedLLMService:
                 EventSeverity.ERROR,
             )
 
-            # Final fallback
-            return await self._generate_fallback_response(
-                message, character_name, character_personality
-            )
+            # Final failure - no fallback
+            raise RuntimeError(f"All LLM providers failed: {str(e)}")
 
     async def generate_streaming_response(
         self,
@@ -222,13 +217,13 @@ class UnifiedLLMService:
                     yield chunk
 
             else:
-                # Non-streaming fallback
-                result = await self._generate_fallback_response(
-                    message, character_name, character_personality
-                )
-                result["provider_used"] = "fallback"
-                result["final"] = True
-                yield result
+                # No streaming available - fail
+                yield {
+                    "response": "Streaming response failed: No LLM providers available",
+                    "emotion": "error",
+                    "provider_used": "error",
+                    "final": True,
+                }
 
         except Exception as e:
             logger.error(f"Error in streaming generation: {e}")
@@ -343,31 +338,6 @@ class UnifiedLLMService:
 
         return status
 
-    async def _generate_fallback_response(
-        self, message: str, character_name: str, personality: str
-    ) -> Dict[str, Any]:
-        """Ultimate fallback when all providers fail"""
-
-        responses = [
-            f"I'm having trouble processing that right now, but I'm here to chat with you!",
-            f"My AI systems are having a moment, but I'm still listening!",
-            f"Technical difficulties on my end, but I appreciate you talking with me!",
-        ]
-
-        import random
-
-        response_text = random.choice(responses)
-
-        if character_name.lower() == "hatsune_miku":
-            response_text = f"Hello! I'm Hatsune Miku! {response_text}"
-
-        return {
-            "response": response_text,
-            "emotion": "apologetic",
-            "model_used": "unified_fallback",
-            "success": False,
-            "provider_used": "fallback",
-        }
 
     async def close(self):
         """Cleanup all services"""

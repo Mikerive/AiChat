@@ -4,7 +4,7 @@ PydanticAI-powered LLM service with modular function tools and advanced emotiona
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, AsyncIterator
+from typing import Any, Dict, List, Optional, AsyncIterator, Tuple
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
@@ -14,7 +14,10 @@ from pydantic_ai.models.anthropic import AnthropicModel
 
 # Local imports
 from aichat.core.event_system import EventSeverity, EventType, get_event_system
-from .tools import EmotionTool, VoiceTool, MemoryTool, CharacterTool
+from .model_config import model_config, ModelProvider
+
+# NEW SIMPLIFIED ARCHITECTURE
+from .tools import SimpleLLMService, CharacterProfile, SimpleEmotionalResponse, SBERTEmotionDetector, CompactVoiceController
 
 logger = logging.getLogger(__name__)
 
@@ -64,54 +67,62 @@ class PydanticAIService:
         self.models = {}
         self._init_models()
 
-        # Initialize modular tools
-        self.emotion_tool = EmotionTool()
-        self.voice_tool = VoiceTool()
-        self.memory_tool = MemoryTool()
-        self.character_tool = CharacterTool()
+        # NEW SIMPLIFIED ARCHITECTURE (RECOMMENDED)
+        self.simple_llm = SimpleLLMService(openai_key, anthropic_key)
+        self.sbert_detector = SBERTEmotionDetector()
+        self.voice_controller = CompactVoiceController()
 
-        # Create AI agent with tools
+        # Create AI agent with tools (LEGACY)
         self.agent = self._create_agent()
 
     def _init_models(self):
-        """Initialize available AI models"""
+        """Initialize models using centralized configuration"""
+        # Set API keys in environment if available
         if self.openai_key:
-            self.models["openai"] = OpenAIModel("gpt-4-turbo", api_key=self.openai_key)
-            self.models["openai-3.5"] = OpenAIModel(
-                "gpt-3.5-turbo", api_key=self.openai_key
-            )
-
+            os.environ["OPENAI_API_KEY"] = self.openai_key
         if self.anthropic_key:
-            self.models["claude"] = AnthropicModel(
-                "claude-3-sonnet-20240229", api_key=self.anthropic_key
-            )
-            self.models["claude-haiku"] = AnthropicModel(
-                "claude-3-haiku-20240307", api_key=self.anthropic_key
-            )
-
+            os.environ["ANTHROPIC_API_KEY"] = self.anthropic_key
         if self.openrouter_key:
-            # OpenRouter models via OpenAI compatibility
-            self.models["openrouter-claude"] = OpenAIModel(
-                "anthropic/claude-3-haiku",
-                api_key=self.openrouter_key,
-                base_url="https://openrouter.ai/api/v1",
-            )
-
-        # Default fallback
+            os.environ["OPENROUTER_API_KEY"] = self.openrouter_key
+        
+        # Get available models from centralized config
+        available_models = model_config.get_available_models()
+        
+        # Initialize models based on centralized config
+        for key, spec in available_models.items():
+            try:
+                if spec.provider == ModelProvider.OPENAI:
+                    self.models[key] = OpenAIModel(spec.name, provider="openai")
+                elif spec.provider == ModelProvider.OPENROUTER:
+                    self.models[key] = OpenAIModel(spec.name, provider="openrouter")
+                elif spec.provider == ModelProvider.ANTHROPIC:
+                    self.models[key] = AnthropicModel(spec.name)
+                
+                logger.info(f"Initialized model: {spec.name} (${spec.cost_per_1m_tokens}/1M tokens)")
+            
+            except Exception as e:
+                logger.warning(f"Failed to initialize model {spec.name}: {e}")
+        
+        # Log cost summary
+        logger.info(f"\n{model_config.get_cost_summary()}")
+        
         if not self.models:
-            logger.warning("No API keys configured, using fallback responses")
+            logger.error("No LLM models available - check API keys and model configuration")
 
     def _create_agent(self) -> Agent:
         """Create PydanticAI agent with character tools"""
 
-        # Select default model
+        # Get default model from centralized config
+        default_spec = model_config.get_default_model()
         default_model = None
-        if "claude-haiku" in self.models:
-            default_model = self.models["claude-haiku"]
-        elif "openai-3.5" in self.models:
-            default_model = self.models["openai-3.5"]
-        elif "openrouter-claude" in self.models:
-            default_model = self.models["openrouter-claude"]
+        
+        if default_spec:
+            # Find the corresponding model instance
+            for key, spec in model_config.get_available_models().items():
+                if spec.name == default_spec.name and key in self.models:
+                    default_model = self.models[key]
+                    logger.info(f"Agent using model: {spec.name} (${spec.cost_per_1m_tokens}/1M tokens)")
+                    break
 
         agent = Agent(
             model=default_model,
@@ -291,10 +302,8 @@ Enhanced Guidelines:
                 agent = self.agent
 
             if not agent.model:
-                # Fallback to simple response
-                return await self._generate_fallback_response(
-                    message, character_name, character_personality
-                )
+                # No model available - cannot proceed
+                raise RuntimeError("No LLM model available for PydanticAI service")
 
             # Emit processing event
             await self.event_system.emit(
@@ -395,9 +404,7 @@ Enhanced Guidelines:
                 EventSeverity.ERROR,
             )
 
-            return await self._generate_fallback_response(
-                message, character_name, character_personality
-            )
+            raise RuntimeError(f"PydanticAI processing failed: {str(e)}")
 
     async def generate_streaming_response(
         self,
@@ -466,53 +473,154 @@ Enhanced Guidelines:
                 "final": True,
             }
 
-    async def _generate_fallback_response(
-        self, message: str, character_name: str, personality: str
-    ) -> Dict[str, Any]:
-        """Generate fallback response when AI models unavailable"""
 
-        responses = {
-            "cheerful": [
-                "That sounds wonderful! I'm so glad to hear about that!",
-                "Yay! That's amazing!",
-                "Awesome! I love hearing good news!",
-            ],
-            "curious": [
-                "That's interesting! Tell me more about that.",
-                "I'd love to learn more! What do you think?",
-                "Fascinating! Can you explain more?",
-            ],
-            "helpful": [
-                "I'm here to help! How can I assist you?",
-                "Let me help you with that. What would you like to know?",
-                "I'd be happy to help you. What do you need?",
-            ],
-        }
-
-        import random
-
-        personality_traits = personality.split(",") if personality else ["friendly"]
-        response_text = (
-            "I'm not sure how to respond to that, but I'm happy to chat with you!"
-        )
-
-        for trait in personality_traits:
-            trait = trait.strip().lower()
-            if trait in responses:
-                response_text = random.choice(responses[trait])
-                break
-
-        if character_name.lower() == "hatsune_miku":
-            response_text = f"Hello! I'm Hatsune Miku! {response_text}"
-
-        return {
-            "response": response_text,
-            "emotion": "neutral",
-            "model_used": "fallback_pydantic",
-            "voice_settings": {"speed": 1.0, "pitch": 1.0},
-            "success": False,
-        }
-
+    # NEW SIMPLIFIED ARCHITECTURE METHODS
+    
+    async def process_message_simple(
+        self,
+        user_message: str,
+        character_name: str,
+        character_personality: str,
+        character_profile: str,
+        conversation_context: str = "",
+        use_voice_modulation: bool = True
+    ) -> SimpleEmotionalResponse:
+        """
+        Process message using the new simplified two-stage architecture
+        
+        This is the RECOMMENDED method for new implementations:
+        1. Single-word emotion detection (fast, no JSON leakage)
+        2. Mathematical voice parameter mapping (N-dimensional space)
+        3. Clean response generation
+        
+        Args:
+            user_message: User's input message
+            character_name: Name of the character
+            character_personality: Character personality description
+            character_profile: Detailed character profile
+            conversation_context: Previous conversation context
+            use_voice_modulation: Whether to apply voice parameter modulation
+            
+        Returns:
+            SimpleEmotionalResponse with text, emotion, and voice parameters
+        """
+        try:
+            character = CharacterProfile(
+                name=character_name,
+                personality=character_personality,
+                profile=character_profile
+            )
+            
+            result = await self.simple_llm.process_message(
+                user_message=user_message,
+                character=character,
+                conversation_context=conversation_context,
+                use_voice_modulation=use_voice_modulation
+            )
+            
+            await self.event_system.emit(
+                EventType.MODEL_RESPONSE,
+                f"Simple LLM response generated for {character_name}",
+                {
+                    "character": character_name,
+                    "detected_emotion": result.detected_emotion,
+                    "voice_speed": result.voice_speed,
+                    "voice_pitch": result.voice_pitch,
+                    "method": "simple_two_stage",
+                    "success": True
+                }
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in simple message processing: {e}")
+            await self.event_system.emit(
+                EventType.ERROR_OCCURRED,
+                f"Simple LLM processing failed: {e}",
+                {"error": str(e)},
+                EventSeverity.ERROR
+            )
+            
+            # Return safe fallback
+            return SimpleEmotionalResponse(
+                text="I understand. Let me help you with that.",
+                detected_emotion="neutral",
+                voice_speed=1.0,
+                voice_pitch=1.0,
+                confidence=0.0
+            )
+    
+    async def detect_emotion_only(self, user_message: str, context: str = "") -> str:
+        """
+        Detect only the emotion from user message (Stage 1 of two-stage process)
+        
+        Args:
+            user_message: User's input message
+            context: Optional conversation context
+            
+        Returns:
+            Single emotion word
+        """
+        return await self.simple_llm.get_emotion_only(user_message, context)
+    
+    async def batch_detect_emotions(self, messages: List[str]) -> List[str]:
+        """
+        Batch detect emotions from multiple messages (efficient)
+        
+        Args:
+            messages: List of user messages
+            
+        Returns:
+            List of detected emotions
+        """
+        return await self.simple_llm.batch_process_emotions(messages)
+    
+    def get_voice_parameters_for_emotion(self, emotion: str) -> Tuple[float, float]:
+        """
+        Get voice parameters for a specific emotion using N-dimensional mapping
+        
+        Args:
+            emotion: Single emotion word
+            
+        Returns:
+            Tuple of (speed, pitch)
+        """
+        return self.simple_llm.get_voice_parameters_for_emotion(emotion)
+    
+    def get_similar_emotions(self, emotion: str, limit: int = 5) -> List[Tuple[str, float]]:
+        """
+        Find emotions similar to the given emotion using vector space
+        
+        Args:
+            emotion: Target emotion
+            limit: Maximum number of similar emotions
+            
+        Returns:
+            List of (emotion_name, similarity_score) tuples
+        """
+        return self.simple_llm.get_similar_emotions(emotion, limit)
+    
+    def get_emotion_space_info(self) -> Dict[str, Any]:
+        """Get information about the N-dimensional emotion space"""
+        return self.simple_llm.voice_controller.get_emotion_space_info()
+    
+    def get_simple_performance_report(self) -> Dict[str, Any]:
+        """Get performance report for the simplified architecture"""
+        return self.simple_llm.get_performance_report()
+    
+    def calibrate_voice_sensitivity(self, speed_sensitivity: float = 1.0, pitch_sensitivity: float = 1.0):
+        """
+        Calibrate voice parameter sensitivity
+        
+        Args:
+            speed_sensitivity: Multiplier for speed sensitivity (1.0 = default)
+            pitch_sensitivity: Multiplier for pitch sensitivity (1.0 = default)
+        """
+        self.simple_llm.calibrate_voice_sensitivity(speed_sensitivity, pitch_sensitivity)
+    
+    # LEGACY METHODS (for backward compatibility)
+    
     async def get_available_models(self) -> List[str]:
         """Get list of available AI models"""
         return list(self.models.keys())
@@ -520,4 +628,5 @@ Enhanced Guidelines:
     async def close(self):
         """Cleanup resources"""
         # PydanticAI handles its own cleanup
+        self.simple_llm.clear_all_caches()
         pass

@@ -1,45 +1,101 @@
-# Testing Structure
+# VTuber AI Testing Suite
 
-This directory contains the test suite for the VtuberMiku project, organized for clear separation between unit tests and integration tests.
+This directory contains a comprehensive testing suite for the VTuber AI system, organized by functionality and purpose. All testing scripts have been moved from the root directory to this organized structure.
 
 ## Directory Structure
 
 ```
 tests/
-├── README.md                    # This file
-├── database/                    # Test database configuration
-│   ├── __init__.py             # Database module exports
-│   ├── setup.py               # Test database setup and sample data
-│   ├── manager.py             # Test database manager and operations
-│   └── test_data.db           # SQLite test database (generated)
-├── chatapp/                   # Chat app unit tests
-│   ├── conftest.py           # Shared test configuration
-│   ├── services/             # Service layer tests
-│   │   ├── test_chat_service.py
-│   │   ├── test_voice_service.py
-│   │   ├── test_whisper_service.py
-│   │   └── test_piper_tts_service.py
-│   ├── routes/               # API route tests
-│   │   ├── test_chat_routes.py
-│   │   ├── test_voice_routes.py
-│   │   ├── test_system_routes.py
-│   │   └── test_routes_with_db.py
-│   └── models/               # Model and DAO tests
-│       ├── test_schemas.py
-│       ├── test_character_dao.py
-│       ├── test_chat_log_dao.py
-│       └── test_dao_with_db.py
-└── integration/              # Cross-application integration tests
-    ├── test_api_recreated.py
-    ├── test_voice_pipeline.py
-    └── test_ws_and_rest.py
+├── README.md                    # This file - comprehensive testing guide
+├── conftest.py                  # Global test configuration
+├── test_api_endpoints.py        # Core API endpoint tests
+│
+├── chatapp/                     # Chat application unit tests
+│   ├── conftest.py             # Chat app test configuration  
+│   ├── routes/                 # API route tests
+│   ├── services/              # Service layer tests
+│   └── models/                # Model and DAO tests
+│
+├── database/                    # Database testing utilities
+│   ├── fixtures/              # Test data fixtures
+│   ├── setup.py              # Database setup and sample data
+│   ├── manager.py            # Test database operations
+│   └── test_data.db          # SQLite test database
+│
+├── frontend/                    # GUI and frontend tests (MOVED HERE)
+│   ├── test_frontend_routes.py    # API integration from frontend perspective
+│   ├── test_gui_integration.py    # Complete GUI component integration  
+│   ├── test_gui_routes.py         # GUI route handling tests
+│   └── test_gui_voice.py          # Voice interface testing
+│
+├── integration/                 # Cross-component integration tests
+│   └── test_api_recreated.py     # Comprehensive API integration
+│
+├── system/                      # System-level functionality tests (NEW)
+│   ├── test_audio_system.py      # Audio system integration
+│   └── audio_system_test_original.py  # Original audio testing script
+│
+├── voice/                       # Voice processing tests (MOVED HERE)
+│   ├── speech_test.py            # Speech processing validation
+│   ├── streaming_test.py         # Real-time audio streaming
+│   └── test_speech_pipeline.py   # Complete speech pipeline
+│
+├── startup/                     # Application initialization tests (MOVED HERE) 
+│   ├── test_frontend_backend_startup.py  # Startup coordination
+│   └── test_improved_startup.py          # Enhanced startup procedures
+│
+├── debug/                       # Debugging and troubleshooting (MOVED HERE)
+│   ├── debug_backend_crash.py    # Backend crash investigation
+│   └── debug_frontend_startup.py # Frontend startup debugging
+│
+├── interactive/                 # Manual testing tools (MOVED HERE)
+│   └── interactive_voice_demo.py # Interactive voice demo
+│
+├── examples/                    # Test examples and templates
+│   └── modern_test_example.py   # Modern testing patterns
+│
+├── test_utils/                  # Testing utilities and helpers
+│   └── di_test_helpers.py      # Dependency injection helpers
+│
+└── reports/                     # Test execution reports
+    ├── FINAL_SUCCESS_REPORT.md        # Overall success summary
+    ├── FIXES_APPLIED_REPORT.md        # Issues resolved  
+    └── frontend_integration_report.json # Detailed frontend results
 ```
 
-## Test Categories
+## 📂 Test Categories (Organized from Root Directory)
+
+### 🎨 Frontend Tests (`tests/frontend/`) - **MOVED FROM ROOT**
+- **`test_frontend_routes.py`** - API integration testing from frontend perspective (100% success rate)
+- **`test_gui_integration.py`** - Complete GUI component integration tests
+- **`test_gui_routes.py`** - GUI route handling and navigation tests  
+- **`test_gui_voice.py`** - Voice interface and audio controls testing
+
+### 🔊 Voice & Audio Tests (`tests/voice/`) - **MOVED FROM ROOT**
+- **`speech_test.py`** - Speech processing and recognition validation
+- **`streaming_test.py`** - Real-time audio streaming functionality
+- **`test_speech_pipeline.py`** - Complete speech processing pipeline tests
+
+### 🚀 Startup Tests (`tests/startup/`) - **MOVED FROM ROOT**
+- **`test_frontend_backend_startup.py`** - Frontend/backend startup coordination
+- **`test_improved_startup.py`** - Enhanced startup procedure validation
+
+### 🔧 Debug Tools (`tests/debug/`) - **MOVED FROM ROOT**
+- **`debug_backend_crash.py`** - Backend crash investigation and diagnostics
+- **`debug_frontend_startup.py`** - Frontend startup debugging utilities
+
+### 🖥️ System Tests (`tests/system/`) - **NEWLY ORGANIZED**
+- **`test_audio_system.py`** - Audio system integration and hardware tests
+- **`audio_system_test_original.py`** - Original comprehensive audio testing
+
+### 🎭 Interactive Tools (`tests/interactive/`) - **MOVED FROM ROOT**
+- **`interactive_voice_demo.py`** - Interactive voice functionality demonstration
+
+### 🧪 Core Test Categories (Existing Structure)
 
 ### Unit Tests (`tests/chatapp/`)
 - **Purpose**: Test individual components in isolation
-- **Scope**: Chat app specific functionality
+- **Scope**: Chat app specific functionality  
 - **Database**: Uses test database with sample data
 - **Speed**: Fast execution
 - **Dependencies**: Minimal external dependencies
@@ -77,24 +133,47 @@ The test database provides the same interface as the production database:
 - Voice model tracking
 - Event logging
 
-## Running Tests
+## 🚀 Running Tests
 
-### Using pytest directly:
+### Quick Test Commands
 ```bash
 # Run all tests
 pytest tests/
 
-# Run only chat app unit tests
-pytest tests/chatapp/
+# Run specific test categories  
+pytest tests/frontend/          # Frontend GUI tests
+pytest tests/voice/            # Voice processing tests
+pytest tests/system/           # System integration tests
+pytest tests/startup/          # Startup procedure tests
+pytest tests/chatapp/          # Chat app unit tests
+pytest tests/integration/     # Cross-component tests
 
-# Run only integration tests  
-pytest tests/integration/
+# Run with different output levels
+pytest tests/ -v              # Verbose output
+pytest tests/ -q              # Quiet output
 
-# Run with verbose output
-pytest tests/ -v
+# Run specific test files
+pytest tests/frontend/test_gui_integration.py
+pytest tests/voice/test_speech_pipeline.py
+pytest tests/system/test_audio_system.py
+```
 
-# Run specific test file
-pytest tests/chatapp/services/test_chat_service.py
+### Interactive & Debug Testing
+```bash
+# Run interactive demonstrations
+python tests/interactive/interactive_voice_demo.py
+
+# Debug specific issues
+python tests/debug/debug_backend_crash.py
+python tests/debug/debug_frontend_startup.py
+
+# Test startup procedures  
+python tests/startup/test_frontend_backend_startup.py
+python tests/startup/test_improved_startup.py
+
+# Voice and audio testing
+python tests/voice/speech_test.py
+python tests/voice/streaming_test.py
 ```
 
 ### Using the test runner script:

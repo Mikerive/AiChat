@@ -7,12 +7,29 @@ from typing import Optional
 from pathlib import Path
 
 # Third-party imports
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 # Local imports
 import json
 from aichat.backend.services.audio.audio_io_service import AudioIOService
+from aichat.backend.services.di_container import (
+    get_whisper_service,
+    get_audio_io_service,
+)
+from aichat.models.schemas import (
+    AudioDeviceInfo,
+    AudioDevicesResponse,
+    AudioDeviceSetResponse,
+    AudioRecordResponse,
+    AudioPlayResponse,
+    AudioVolumeResponse,
+    AudioInfoResponse,
+    AudioIOStatusResponse,
+    RecordTranscribeResponse,
+    JobCheckpointResponse,
+    JobLogsResponse,
+)
 from aichat.training.processors.audio_processor import AudioProcessor
 from aichat.training.train_voice import VoiceTrainer, VoiceTrainerConfig
 from aichat.constants.paths import (
@@ -31,12 +48,16 @@ from aichat.core.event_system import (
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# TODO: Add dependency injection for services
+# Dependency injection using DI container
 def get_audio_io_service_dep():
-    """Dependency for AudioIO service"""
-    return AudioIOService()
+    """Dependency for AudioIO service using DI container"""
+    return get_audio_io_service()
 
-@router.get("/jobs/{job_id}/checkpoint")
+def get_whisper_service_dep():
+    """Dependency injection for whisper service using DI container"""
+    return get_whisper_service()
+
+@router.get("/jobs/{job_id}/checkpoint", response_model=JobCheckpointResponse)
 async def job_checkpoint(job_id: str):
     """Get checkpoint data for a training job"""
     try:
@@ -44,14 +65,14 @@ async def job_checkpoint(job_id: str):
         if not job_path.exists():
             raise HTTPException(status_code=404, detail="Job checkpoint not found")
         data = json.loads(job_path.read_text(encoding="utf-8"))
-        return {"job_id": job_id, "checkpoint": data}
+        return JobCheckpointResponse(job_id=job_id, checkpoint=data)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error reading job checkpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/jobs/{job_id}/logs")
+@router.get("/jobs/{job_id}/logs", response_model=JobLogsResponse)
 async def job_logs(job_id: str, tail: int = 200):
     """Return the last N lines of the orchestrator or events logs for a given job"""
     try:
@@ -71,7 +92,7 @@ async def job_logs(job_id: str, tail: int = 200):
         with open(target, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
         tail_lines = lines[-tail:]
-        return {"job_id": job_id, "log_file": str(target), "tail": "".join(tail_lines)}
+        return JobLogsResponse(job_id=job_id, log_file=str(target), tail="".join(tail_lines))
     except HTTPException:
         raise
     except Exception as e:
@@ -80,35 +101,35 @@ async def job_logs(job_id: str, tail: int = 200):
 
 # ===== AudioIO Service Endpoints =====
 
-@router.get("/audio/devices")
+@router.get("/audio/devices", response_model=AudioDevicesResponse)
 async def get_audio_devices(audio_io_service=Depends(get_audio_io_service_dep)):
     """Get available audio input and output devices"""
     try:
         input_devices = await audio_io_service.get_input_devices()
         output_devices = await audio_io_service.get_output_devices()
 
-        return {
-            "input_devices": [
-                {
-                    "id": device.id,
-                    "name": device.name,
-                    "channels": device.channels,
-                    "sample_rate": device.sample_rate,
-                    "is_default": device.is_default,
-                }
+        return AudioDevicesResponse(
+            input_devices=[
+                AudioDeviceInfo(
+                    id=device.id,
+                    name=device.name,
+                    channels=device.channels,
+                    sample_rate=device.sample_rate,
+                    is_default=device.is_default,
+                )
                 for device in input_devices
             ],
-            "output_devices": [
-                {
-                    "id": device.id,
-                    "name": device.name,
-                    "channels": device.channels,
-                    "sample_rate": device.sample_rate,
-                    "is_default": device.is_default,
-                }
+            output_devices=[
+                AudioDeviceInfo(
+                    id=device.id,
+                    name=device.name,
+                    channels=device.channels,
+                    sample_rate=device.sample_rate,
+                    is_default=device.is_default,
+                )
                 for device in output_devices
             ],
-        }
+        )
 
     except Exception as e:
         logger.error(f"Error getting audio devices: {e}")
@@ -206,15 +227,22 @@ async def play_audio(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/audio/volume")
-async def set_volume(volume: float, audio_io_service=Depends(get_audio_io_service_dep)):
+async def set_volume(request: dict = Body(...), audio_io_service=Depends(get_audio_io_service_dep)):
     """Set output volume (0.0 to 1.0)"""
     try:
+        volume = request.get("volume")
+        if volume is None:
+            raise HTTPException(status_code=400, detail="Volume field required in request body")
+        
+        if not isinstance(volume, (int, float)):
+            raise HTTPException(status_code=400, detail="Volume must be a number")
+            
         if volume < 0.0 or volume > 1.0:
             raise HTTPException(
                 status_code=400, detail="Volume must be between 0.0 and 1.0"
             )
 
-        success = await audio_io_service.set_volume(volume)
+        success = await audio_io_service.set_volume(float(volume))
 
         if success:
             return {"status": "success", "volume": volume}

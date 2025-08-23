@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 # Local imports
 from aichat.core.event_system import EventSeverity, EventType, get_event_system
+from .model_config import model_config, ModelTier
 from .pydantic_ai_service import PydanticAIService
 
 import aiohttp
@@ -25,7 +26,13 @@ class OpenRouterService:
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         self.base_url = "https://openrouter.ai/api/v1"
         self.event_system = get_event_system()
-        self.default_model = "anthropic/claude-3-haiku"
+        # Get default model from centralized config
+        default_spec = model_config.get_default_model()
+        self.default_model = default_spec.name if default_spec else "cognitivecomputations/dolphin-mistral-24b-venice-edition:free"
+        
+        logger.info(f"OpenRouter default model: {self.default_model}")
+        if default_spec:
+            logger.info(f"Model cost: ${default_spec.cost_per_1m_tokens}/1M tokens")
         self.session = None
 
         # Initialize PydanticAI service as enhanced fallback
@@ -62,12 +69,8 @@ class OpenRouterService:
         """Generate character response using OpenRouter LLM"""
         try:
             if not self.api_key:
-                logger.warning(
-                    "OpenRouter API key not configured, using fallback response"
-                )
-                return await self._generate_fallback_response(
-                    message, character_name, character_personality
-                )
+                logger.error("OpenRouter API key not configured")
+                raise RuntimeError("OpenRouter API key is required but not configured")
 
             # Build character context
             system_prompt = self._build_character_prompt(
@@ -156,13 +159,7 @@ class OpenRouterService:
                         EventSeverity.ERROR,
                     )
 
-                    # Use PydanticAI enhanced fallback
-                    return await self.pydantic_ai.generate_response(
-                        message,
-                        character_name,
-                        character_personality,
-                        character_profile,
-                    )
+                    raise RuntimeError(f"OpenRouter API error: {response.status} - {error_text}")
 
         except Exception as e:
             logger.error(f"Error generating LLM response: {e}")
@@ -175,10 +172,7 @@ class OpenRouterService:
                 EventSeverity.ERROR,
             )
 
-            # Use PydanticAI enhanced fallback
-            return await self.pydantic_ai.generate_response(
-                message, character_name, character_personality, character_profile
-            )
+            raise RuntimeError(f"LLM processing failed: {str(e)}")
 
     def _build_character_prompt(
         self, character_name: str, personality: str, profile: str
@@ -256,65 +250,6 @@ Remember:
 
         return cleaned
 
-    async def _generate_fallback_response(
-        self, message: str, character_name: str, personality: str
-    ) -> Dict[str, Any]:
-        """Generate fallback response when OpenRouter is unavailable"""
-        try:
-            personality_traits = personality.split(",") if personality else ["friendly"]
-
-            # Simple response patterns based on personality
-            responses = {
-                "cheerful": [
-                    f"That's wonderful! I'm so glad to hear about that!",
-                    f"Yay! That sounds amazing!",
-                    f"Awesome! I love hearing good news!",
-                ],
-                "curious": [
-                    f"That's interesting! Tell me more about that.",
-                    f"I'd love to learn more! What do you think?",
-                    f"Fascinating! Can you explain more?",
-                ],
-                "helpful": [
-                    f"I'm here to help! How can I assist you?",
-                    f"Let me help you with that. What would you like to know?",
-                    f"I'd be happy to help you. What do you need?",
-                ],
-            }
-
-            # Select response based on personality
-            response_text = (
-                "I'm not sure how to respond to that, but I'm happy to chat with you!"
-            )
-            for trait in personality_traits:
-                trait = trait.strip().lower()
-                if trait in responses:
-                    import random
-
-                    response_text = random.choice(responses[trait])
-                    break
-
-            # Add character-specific greeting
-            if character_name.lower() == "hatsune_miku":
-                response_text = f"Hello! I'm Hatsune Miku! {response_text}"
-
-            return {
-                "response": response_text,
-                "emotion": "neutral",
-                "model_used": "fallback_local",
-                "tokens_used": 0,
-                "success": False,
-            }
-
-        except Exception as e:
-            logger.error(f"Error generating fallback response: {e}")
-            return {
-                "response": "I'm having trouble responding right now. Please try again later.",
-                "emotion": "confused",
-                "model_used": "error",
-                "tokens_used": 0,
-                "success": False,
-            }
 
     async def get_available_models(self) -> List[Dict[str, Any]]:
         """Get list of available models from OpenRouter"""

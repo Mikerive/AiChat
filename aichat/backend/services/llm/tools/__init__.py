@@ -1,16 +1,24 @@
 """
 LLM Function Tools Package
 
-Provides modular function tools for PydanticAI agents:
-- emotion_tools: Emotion detection, analysis, and control
-- voice_tools: Voice settings and TTS control
-- memory_tools: Conversation memory and context management
-- character_tools: Character-specific behaviors and responses
+Provides simplified tools for PydanticAI agents with ultra-fast emotion processing:
+
+- simple_llm_service: Clean two-stage emotion processing (emotion query -> response)
+- simple_emotion_detector: Single-word emotion detection without JSON complexity
+- compact_voice_controller: N-dimensional emotion space with mathematical voice mapping
+- sbert_emotion_detector: Lightning-fast SBERT-based emotion detection (5-50ms vs 200-400ms API)
 """
 
-from .emotion_tools import EmotionTool
-from .voice_tools import VoiceTool
-from .memory_tools import MemoryTool
-from .character_tools import CharacterTool
+# NEW SIMPLIFIED ARCHITECTURE
+from .simple_llm_service import SimpleLLMService, SimpleEmotionalResponse, CharacterProfile
+from .simple_emotion_detector import SimpleEmotionDetector, EmotionalResponseGenerator
+from .compact_voice_controller import CompactVoiceController, EmotionVector
+from .sbert_emotion_detector import SBERTEmotionDetector, EmotionTemplate
 
-__all__ = ["EmotionTool", "VoiceTool", "MemoryTool", "CharacterTool"]
+__all__ = [
+    # CORE SERVICES
+    "SimpleLLMService", "SimpleEmotionalResponse", "CharacterProfile",
+    "SimpleEmotionDetector", "EmotionalResponseGenerator", 
+    "CompactVoiceController", "EmotionVector",
+    "SBERTEmotionDetector", "EmotionTemplate"
+]

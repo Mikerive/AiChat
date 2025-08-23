@@ -35,6 +35,8 @@ class EventType(Enum):
     AUDIO_PROCESSED = "audio.processed"
     AUDIO_UPLOADED = "audio.uploaded"
     AUDIO_CAPTURED = "audio.captured"
+    AUDIO_DEVICE_CHANGED = "audio.device_changed"
+    AUDIO_PLAYED = "audio.played"
 
     # Training events
     TRAINING_STARTED = "training.started"

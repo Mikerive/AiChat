@@ -7,44 +7,26 @@ voice capture, user tracking, and integration with VtuberMiku's voice processing
 
 import asyncio
 import logging
+import time
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 # Third-party imports
+try:
     import discord
     from discord.ext import commands
-
-# Local imports
-from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
-    from aichat.core.event_system import EventSeverity, EventType, get_event_system
-from .discord.config import DiscordConfig
-from .discord.discord_bot import DiscordBot
-
-try:
-except ImportError:
-    # Fallback for when imports aren't available
-    def get_event_system():
-        class MockEventSystem:
-            async def emit(self, *args, **kwargs):
-                pass
-
-        return MockEventSystem()
-
-    class EventType:
-        WEBSOCKET_CONNECTED = "websocket_connected"
-        WEBSOCKET_DISCONNECTED = "websocket_disconnected"
-        AUDIO_TRANSCRIBED = "audio_transcribed"
-        ERROR_OCCURRED = "error_occurred"
-
-    class EventSeverity:
-        ERROR = "error"
-
-try:
-
     DISCORD_AVAILABLE = True
 except ImportError:
     DISCORD_AVAILABLE = False
     discord = None
     commands = None
+
+# Local imports
+from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
+from aichat.core.event_system import EventSeverity, EventType, get_event_system
+from .config import DiscordConfig
+from .discord_bot import DiscordBot
 
 logger = logging.getLogger(__name__)
 

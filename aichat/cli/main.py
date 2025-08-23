@@ -31,6 +31,15 @@ def main(argv: Optional[list] = None):
 
     # Frontend command
     frontend_parser = subparsers.add_parser("frontend", help="Start GUI frontend")
+    frontend_parser.add_argument(
+        "--gui", 
+        choices=["streamlit", "tkinter", "voice"], 
+        default="streamlit", 
+        help="GUI framework to use (default: streamlit)"
+    )
+    
+    # Voice GUI command (shortcut for frontend --gui voice)
+    voice_gui_parser = subparsers.add_parser("voice-gui", help="Start interactive voice GUI")
 
     # Training command
     training_parser = subparsers.add_parser("training", help="Start training pipeline")
@@ -48,6 +57,10 @@ def main(argv: Optional[list] = None):
         from .frontend import main as frontend_main
 
         return frontend_main(args)
+    elif args.command == "voice-gui":
+        # Start voice GUI directly
+        from aichat.frontend.tkinter_voice_gui import main as voice_gui_main
+        return voice_gui_main()
     elif args.command == "training":
         from .training import main as training_main
 

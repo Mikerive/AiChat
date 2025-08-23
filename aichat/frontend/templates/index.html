@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 VTuber Control Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-bar {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-dot.connected {
+            background: #44ff44;
+        }
+        .tabs {
+            display: flex;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 15px;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .tab-button:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .tab-button.active {
+            background: rgba(255,255,255,0.2);
+        }
+        .tab-content {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+        .form-group textarea {
+            resize: vertical;
+            height: 100px;
+        }
+        .btn {
+            background: #4a90e2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .btn:hover {
+            background: #357abd;
+        }
+        .btn.success {
+            background: #5cb85c;
+        }
+        .btn.danger {
+            background: #d9534f;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .log-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider {
+            flex: 1;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 VTuber Control Center</h1>
+            <p>Simple, Fast, and Actually Works</p>
+        </div>
+
+        <div class="status-bar">
+            <div>
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Checking connection...</span>
+            </div>
+            <div id="timeDisplay"></div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('status')">📊 System Status</button>
+            <button class="tab-button" onclick="showTab('tts')">🎵 TTS Control</button>
+            <button class="tab-button" onclick="showTab('chat')">💬 Chat Interface</button>
+            <button class="tab-button" onclick="showTab('audio')">🔊 Audio Controls</button>
+            <button class="tab-button" onclick="showTab('config')">⚙️ Configuration</button>
+        </div>
+
+        <!-- System Status Tab -->
+        <div id="status-tab" class="tab-content active">
+            <div class="grid">
+                <div class="card">
+                    <h3>🖥️ Backend Status</h3>
+                    <button class="btn" onclick="checkStatus()">🔄 Refresh Status</button>
+                    <button class="btn success" onclick="startBackend()">🚀 Start Backend</button>
+                    <button class="btn danger" onclick="stopBackend()">⏹️ Stop Backend</button>
+                    <div class="log-box" id="statusLog">Ready...</div>
+                </div>
+                <div class="card">
+                    <h3>⚡ System Information</h3>
+                    <div id="systemInfo">
+                        <p><strong>API URL:</strong> http://localhost:8765</p>
+                        <p><strong>Status:</strong> <span id="connectionStatus">Checking...</span></p>
+                        <p><strong>Last Check:</strong> <span id="lastCheck">Never</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TTS Control Tab -->
+        <div id="tts-tab" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h3>📝 Text Input</h3>
+                    <div class="form-group">
+                        <label>Text to Generate:</label>
+                        <textarea id="ttsText" placeholder="[INTENSITY: high] Hello there! How are you doing today?">[INTENSITY: high] Hello there! How are you doing today?</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Character:</label>
+                        <select id="ttsCharacter">
+                            <option value="hatsune_miku">Hatsune Miku</option>
+                            <option value="character1">Character 1</option>
+                            <option value="character2">Character 2</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="generateTTS()">🎵 Generate TTS</button>
+                </div>
+                <div class="card">
+                    <h3>🎛️ Controls & Results</h3>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="useManualIntensity"> Use Manual Intensity
+                        </label>
+                    </div>
+                    <div class="slider-container">
+                        <label>Intensity:</label>
+                        <input type="range" class="slider" id="manualIntensity" min="0" max="2" step="0.1" value="1" disabled>
+                        <span id="intensityValue">1.0</span>
+                    </div>
+                    <div class="log-box" id="ttsLog">Ready to generate TTS...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Interface Tab -->
+        <div id="chat-tab" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h3>💬 Send Message</h3>
+                    <div class="form-group">
+                        <label>Your Message:</label>
+                        <input type="text" id="chatMessage" placeholder="Type your message here...">
+                    </div>
+                    <button class="btn" onclick="sendChatMessage()">📤 Send</button>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="autoTTS"> Auto-generate TTS for responses
+                        </label>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>💬 Chat History</h3>
+                    <div class="log-box" id="chatHistory">Welcome to VTuber Chat! Select a character and start chatting.</div>
+                    <button class="btn" onclick="clearChatHistory()">🗑️ Clear Chat</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audio Controls Tab -->
+        <div id="audio-tab" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h3>🎵 Audio Testing</h3>
+                    <div class="slider-container">
+                        <label>Recording Duration:</label>
+                        <input type="range" class="slider" id="recordDuration" min="1" max="30" value="5">
+                        <span id="durationValue">5s</span>
+                    </div>
+                    <button class="btn" onclick="recordAudio()">⏺️ Record</button>
+                    <button class="btn" onclick="playAudio()">▶️ Play</button>
+                    <button class="btn" onclick="stopAudio()">⏹️ Stop</button>
+                </div>
+                <div class="card">
+                    <h3>🔊 Volume Controls</h3>
+                    <div class="slider-container">
+                        <label>Master Volume:</label>
+                        <input type="range" class="slider" id="masterVolume" min="0" max="1" step="0.1" value="0.8">
+                        <span id="masterVolumeValue">0.8</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>TTS Volume:</label>
+                        <input type="range" class="slider" id="ttsVolume" min="0" max="1" step="0.1" value="0.8">
+                        <span id="ttsVolumeValue">0.8</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div id="config-tab" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h3>🔌 API Settings</h3>
+                    <div class="form-group">
+                        <label>API Host:</label>
+                        <input type="text" id="apiHost" value="localhost">
+                    </div>
+                    <div class="form-group">
+                        <label>API Port:</label>
+                        <input type="number" id="apiPort" value="8765">
+                    </div>
+                    <button class="btn" onclick="saveSettings()">💾 Save Settings</button>
+                </div>
+                <div class="card">
+                    <h3>🔧 Advanced Settings</h3>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="debugMode"> Enable Debug Mode
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="autoConnect" checked> Auto-connect WebSocket
+                        </label>
+                    </div>
+                    <button class="btn" onclick="resetSettings()">🔄 Reset to Defaults</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Status functions
+        async function checkStatus() {
+            const statusLog = document.getElementById('statusLog');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const lastCheck = document.getElementById('lastCheck');
+            
+            statusLog.textContent += 'Checking backend status...\\n';
+            statusLog.scrollTop = statusLog.scrollHeight;
+            
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (data.connected) {
+                    statusDot.classList.add('connected');
+                    statusText.textContent = 'Backend Connected';
+                    connectionStatus.textContent = 'Connected';
+                    statusLog.textContent += 'Backend is online and responding\\n';
+                    if (data.data) {
+                        statusLog.textContent += JSON.stringify(data.data, null, 2) + '\\n';
+                    }
+                } else {
+                    statusDot.classList.remove('connected');
+                    statusText.textContent = 'Backend Disconnected';
+                    connectionStatus.textContent = 'Disconnected';
+                    statusLog.textContent += 'Backend connection failed: ' + data.error + '\\n';
+                }
+            } catch (error) {
+                statusDot.classList.remove('connected');
+                statusText.textContent = 'Connection Error';
+                connectionStatus.textContent = 'Error';
+                statusLog.textContent += 'Error checking status: ' + error + '\\n';
+            }
+            
+            lastCheck.textContent = new Date().toLocaleTimeString();
+            statusLog.scrollTop = statusLog.scrollHeight;
+        }
+
+        // TTS functions
+        async function generateTTS() {
+            const text = document.getElementById('ttsText').value;
+            const character = document.getElementById('ttsCharacter').value;
+            const useManual = document.getElementById('useManualIntensity').checked;
+            const manualIntensity = document.getElementById('manualIntensity').value;
+            const ttsLog = document.getElementById('ttsLog');
+            
+            if (!text.trim()) {
+                ttsLog.textContent += 'Error: No text provided\\n';
+                return;
+            }
+            
+            ttsLog.textContent += 'Generating TTS...\\n';
+            ttsLog.scrollTop = ttsLog.scrollHeight;
+            
+            const payload = {
+                text: text,
+                character: character,
+                speed: 1.0,
+                pitch: 1.0
+            };
+            
+            if (useManual) {
+                payload.manual_intensity = parseFloat(manualIntensity);
+            }
+            
+            try {
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    ttsLog.textContent += 'TTS generated successfully!\\n';
+                    if (data.data && data.data.audio_file) {
+                        ttsLog.textContent += 'Audio file: ' + data.data.audio_file + '\\n';
+                    }
+                } else {
+                    ttsLog.textContent += 'TTS generation failed: ' + data.error + '\\n';
+                }
+            } catch (error) {
+                ttsLog.textContent += 'Error generating TTS: ' + error + '\\n';
+            }
+            
+            ttsLog.scrollTop = ttsLog.scrollHeight;
+        }
+
+        // Chat functions
+        async function sendChatMessage() {
+            const message = document.getElementById('chatMessage').value;
+            const character = document.getElementById('ttsCharacter').value;
+            const chatHistory = document.getElementById('chatHistory');
+            
+            if (!message.trim()) {
+                return;
+            }
+            
+            // Add message to chat history
+            const timestamp = new Date().toLocaleTimeString();
+            chatHistory.textContent += `[${timestamp}] You: ${message}\\n`;
+            document.getElementById('chatMessage').value = '';
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: message,
+                        character: character
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const responseText = data.data.response || 'No response';
+                    chatHistory.textContent += `[${timestamp}] ${character}: ${responseText}\\n`;
+                    
+                    // Auto-generate TTS if enabled
+                    if (document.getElementById('autoTTS').checked) {
+                        // Trigger TTS generation
+                        document.getElementById('ttsText').value = responseText;
+                        generateTTS();
+                    }
+                } else {
+                    chatHistory.textContent += `[${timestamp}] Error: ${data.error}\\n`;
+                }
+            } catch (error) {
+                chatHistory.textContent += `[${timestamp}] Error: ${error}\\n`;
+            }
+            
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function clearChatHistory() {
+            document.getElementById('chatHistory').textContent = 'Chat history cleared.\\n';
+        }
+
+        // Settings functions
+        function saveSettings() {
+            alert('Settings saved! (Feature not fully implemented yet)');
+        }
+
+        function resetSettings() {
+            document.getElementById('apiHost').value = 'localhost';
+            document.getElementById('apiPort').value = '8765';
+            document.getElementById('debugMode').checked = false;
+            document.getElementById('autoConnect').checked = true;
+            alert('Settings reset to defaults!');
+        }
+
+        // Placeholder functions
+        function startBackend() {
+            document.getElementById('statusLog').textContent += 'Starting backend... (not implemented)\\n';
+        }
+
+        function stopBackend() {
+            document.getElementById('statusLog').textContent += 'Stopping backend... (not implemented)\\n';
+        }
+
+        function recordAudio() {
+            alert('Audio recording not implemented yet');
+        }
+
+        function playAudio() {
+            alert('Audio playback not implemented yet');
+        }
+
+        function stopAudio() {
+            alert('Audio stop not implemented yet');
+        }
+
+        // Slider value updates
+        document.getElementById('manualIntensity').addEventListener('input', function() {
+            document.getElementById('intensityValue').textContent = this.value;
+        });
+
+        document.getElementById('recordDuration').addEventListener('input', function() {
+            document.getElementById('durationValue').textContent = this.value + 's';
+        });
+
+        document.getElementById('masterVolume').addEventListener('input', function() {
+            document.getElementById('masterVolumeValue').textContent = this.value;
+        });
+
+        document.getElementById('ttsVolume').addEventListener('input', function() {
+            document.getElementById('ttsVolumeValue').textContent = this.value;
+        });
+
+        // Manual intensity toggle
+        document.getElementById('useManualIntensity').addEventListener('change', function() {
+            document.getElementById('manualIntensity').disabled = !this.checked;
+        });
+
+        // Time display
+        function updateTime() {
+            document.getElementById('timeDisplay').textContent = new Date().toLocaleTimeString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Auto-check status on load
+        window.addEventListener('load', function() {
+            setTimeout(checkStatus, 1000);
+        });
+
+        // Enter key for chat
+        document.getElementById('chatMessage').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+    </script>
+</body>
+</html>

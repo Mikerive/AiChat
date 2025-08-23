@@ -11,29 +11,84 @@ import numpy as np
 import soundfile as sf
 
 # Third-party imports
-import numpy as np
-import soundfile as sf
-            import whisper
-            import whisper
-                import whisper
+try:
+    import whisper
+except ImportError:
+    whisper = None
 
 # Local imports
 from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
 from aichat.core.event_system import EventSeverity, EventType, get_event_system
-from ..io_services.audio_io_service import AudioIOService
+from aichat.backend.services.audio.audio_io_service import AudioIOService
 
-        p = _Path(audio_path)
-        # Provide a short, deterministic mock transcription tied to Piper fallback for tests
-        mock_text = f"PIPER_MOCK_TRANSCRIPTION for {p.name}"
+logger = logging.getLogger(__name__)
 
-        return {
-            "text": mock_text,
-            "language": "en",
-            "confidence": 0.85,
-            "processing_time": 1.5,
-            "duration": 1.5,
-            "mock": True,
-        }
+
+class WhisperService:
+    """Speech-to-text service using OpenAI Whisper"""
+    
+    def __init__(self, model_name: str = "base"):
+        self.model_name = model_name
+        self.model = None
+        self._initialized = False
+        self.event_system = get_event_system()
+        self.audio_io = AudioIOService()
+        
+        # Initialize Whisper if available
+        if whisper is not None:
+            try:
+                self.model = whisper.load_model(model_name)
+                self._initialized = True
+                logger.info(f"Whisper model '{model_name}' loaded successfully")
+            except Exception as e:
+                logger.error(f"Failed to load Whisper model: {e}")
+                self._initialized = False
+        else:
+            logger.error("Whisper not available - service cannot function")
+            self._initialized = False
+    
+    
+    async def transcribe_audio(self, audio_path: Path) -> Dict[str, Any]:
+        """Transcribe audio file using Whisper"""
+        try:
+            if not audio_path.exists():
+                raise FileNotFoundError(f"Audio file not found: {audio_path}")
+            
+            if not self._initialized:
+                logger.error("Whisper not initialized - cannot transcribe audio")
+                raise RuntimeError("Whisper service is not available")
+            
+            start_time = time.time()
+            
+            # Load and transcribe audio
+            result = self.model.transcribe(str(audio_path))
+            
+            processing_time = time.time() - start_time
+            
+            # Emit transcription event
+            await self.event_system.emit(
+                EventType.AUDIO_TRANSCRIBED,
+                f"Audio transcribed: {audio_path.name}",
+                {
+                    "file": str(audio_path),
+                    "text": result["text"],
+                    "language": result["language"],
+                    "processing_time": processing_time
+                }
+            )
+            
+            return {
+                "text": result["text"],
+                "language": result["language"],
+                "confidence": 0.95,  # Whisper doesn't provide confidence scores
+                "processing_time": processing_time,
+                "duration": result.get("duration", 0.0),
+                "fallback": False,
+            }
+            
+        except Exception as e:
+            logger.error(f"Error transcribing audio: {e}")
+            raise RuntimeError(f"Audio transcription failed: {e}")
 
     async def transcribe_audio_bytes(self, audio_bytes: bytes) -> Dict[str, Any]:
         """Transcribe audio from bytes"""
@@ -60,7 +115,7 @@ from ..io_services.audio_io_service import AudioIOService
 
         except Exception as e:
             logger.error(f"Error transcribing audio bytes: {e}")
-            return self._get_mock_transcription(Path("mock"))
+            raise RuntimeError(f"Audio bytes transcription failed: {e}")
 
     async def transcribe_microphone(self, duration: float = 5.0) -> Dict[str, Any]:
         """Transcribe microphone input using AudioIOService"""
@@ -80,27 +135,27 @@ from ..io_services.audio_io_service import AudioIOService
 
                 return result
             else:
-                # Fall back to mock transcription if recording failed
-                mock_text = "This is a mock transcription from microphone input. AudioIOService recording may not be available."
+                # Fall back to fallback transcription if recording failed
+                fallback_text = "[Audio recording unavailable] Microphone input could not be processed."
 
                 await self.event_system.emit(
                     EventType.AUDIO_CAPTURED,
-                    "Microphone audio captured (mock)",
+                    "Microphone audio captured (fallback)",
                     {"duration": duration},
                 )
 
                 return {
-                    "text": mock_text,
+                    "text": fallback_text,
                     "language": "en",
                     "confidence": 0.90,
                     "processing_time": 2.0,
                     "duration": duration,
-                    "mock": True,
+                    "fallback": True,
                 }
 
         except Exception as e:
             logger.error(f"Error transcribing microphone: {e}")
-            return self._get_mock_transcription(Path("microphone"))
+            raise RuntimeError(f"Microphone transcription failed: {e}")
 
     async def get_available_models(self) -> list:
         """Get available Whisper models"""

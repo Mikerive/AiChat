@@ -4,6 +4,7 @@ AudioIO Service for centralized audio input/output device management
 
 import asyncio
 import logging
+import time
 from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass
@@ -22,23 +23,6 @@ try:
     import pyaudio
 except ImportError:
     pyaudio = None
-    # Fallback for when imports aren't available
-    def get_event_system():
-        class MockEventSystem:
-            async def emit(self, *args, **kwargs):
-                pass
-
-        return MockEventSystem()
-
-    class EventType:
-        AUDIO_DEVICE_CHANGED = "audio_device_changed"
-        AUDIO_CAPTURED = "audio_captured"
-        AUDIO_PLAYED = "audio_played"
-        AUDIO_GENERATED = "audio_generated"
-        ERROR_OCCURRED = "error_occurred"
-
-    class EventSeverity:
-        ERROR = "error"
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +80,7 @@ class AudioIOService:
         self._playback_active = False
 
         # Initialize directories
-        ensure_dirs(TEMP_AUDIO_DIR, AUDIO_OUTPUT)
+        ensure_dirs(TEMP_AUDIO_DIR, GENERATED_AUDIO_DIR)
 
         # Try to initialize audio backends
         self._initialize_audio_backends()
@@ -375,7 +359,7 @@ class AudioIOService:
 
             # Open audio stream
             stream = self._pyaudio.open(
-                format=self._pyaudio.paInt16,
+                format=pyaudio.paInt16,
                 channels=channels,
                 rate=sample_rate,
                 input=True,
@@ -516,7 +500,7 @@ class AudioIOService:
 
             # Open audio stream
             stream = self._pyaudio.open(
-                format=self._pyaudio.paInt16,
+                format=pyaudio.paInt16,
                 channels=channels,
                 rate=sample_rate,
                 output=True,

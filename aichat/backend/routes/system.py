@@ -52,6 +52,65 @@ async def get_system_status():
         raise HTTPException(status_code=500, detail=f"Failed to get system status: {e}")
 
 
+@router.get("/info")
+async def get_system_info():
+    """
+    Get detailed system information including version, features, and environment details
+    """
+    try:
+        import platform
+        import sys
+        import os
+        
+        # Get Python and system information
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        system_info = {
+            "platform": platform.system(),
+            "platform_version": platform.version(),
+            "architecture": platform.architecture()[0],
+            "processor": platform.processor(),
+            "hostname": platform.node(),
+        }
+        
+        # Get application information
+        app_info = {
+            "name": "VTuber AI Chat System",
+            "version": "1.0.0",
+            "python_version": python_version,
+            "environment": os.getenv("ENVIRONMENT", "development"),
+        }
+        
+        # Get feature availability
+        features = {
+            "chat": True,
+            "tts": True,
+            "stt": True,
+            "audio_io": True,
+            "websocket": True,
+            "event_system": True,
+            "voice_training": True,
+        }
+        
+        # Get service endpoints
+        endpoints = {
+            "chat": "/api/chat",
+            "voice": "/api/voice", 
+            "system": "/api/system",
+            "websocket": "/api/ws",
+        }
+        
+        return {
+            "system": system_info,
+            "application": app_info,
+            "features": features,
+            "endpoints": endpoints,
+            "uptime": time.time() - startup_time,
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting system info: {str(e)}")
+
+
 @router.get("/vad_diagnostics")
 async def vad_diagnostics(stream_id: str = Query(...), tail_seconds: float = 6.0):
     """

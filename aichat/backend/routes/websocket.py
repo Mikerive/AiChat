@@ -12,18 +12,86 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
-# Local imports
-from aichat.backend.services.chat.service_manager import (
+# Local imports  
+import base64
+import os
+from aichat.backend.services.chat.service_manager import get_whisper_service, get_chat_service
 from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
 from aichat.core.event_system import EventType, get_event_system
-                    from aichat.backend.services.voice.tts.piper_tts_service import (
-                    from aichat.backend.services.voice.tts.piper_tts_service import (
-                from aichat.backend.services.stt_services.streaming_stt_service import (
-            from backend.api.routes.system import get_system_status
 
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+# WebSocket connection manager
+class ConnectionManager:
+    """Manages WebSocket connections"""
+    
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+    
+    async def connect(self, websocket: WebSocket):
+        """Accept a WebSocket connection"""
+        await websocket.accept()
+        self.active_connections.append(websocket)
+    
+    def disconnect(self, websocket: WebSocket):
+        """Remove a WebSocket connection"""
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+    
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        """Send a message to a specific connection"""
+        try:
+            await websocket.send_text(message)
+        except Exception as e:
+            logger.error(f"Error sending message: {e}")
+    
+    async def broadcast(self, message: str):
+        """Send a message to all connections"""
+        for connection in self.active_connections[:]:
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                logger.error(f"Error broadcasting message: {e}")
+                self.disconnect(connection)
+
+manager = ConnectionManager()
+
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """Main WebSocket endpoint for real-time communication"""
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
+            
+            # Handle different message types
+            message_type = message_data.get("type")
+            
+            if message_type == "audio_chunk":
+                await handle_audio_chunk(websocket, message_data)
+            elif message_type == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+            else:
+                logger.warning(f"Unknown message type: {message_type}")
+                
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        logger.info("WebSocket connection closed")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        manager.disconnect(websocket)
+
+async def handle_audio_chunk(websocket: WebSocket, message_data: Dict[str, Any]):
+    """Handle audio chunk processing"""
+    try:
+        audio_data = message_data.get("audio_data", "")
+        stream_id = message_data.get("stream_id", "unknown")
+        
         # Decode base64 audio data
         audio_bytes = base64.b64decode(audio_data)
-
+        
         # Save to centralized temporary file for processing
         ensure_dirs(TEMP_AUDIO_DIR)
         temp_path = str(
@@ -140,6 +208,20 @@ from aichat.core.event_system import EventType, get_event_system
             "timestamp": "2024-01-01T00:00:00Z",
         }
         await websocket.send_text(json.dumps(error_response))
+
+async def handle_event_broadcast(event_type: EventType, data: dict = None):
+    """Handle event broadcasting to all connected WebSocket clients"""
+    try:
+        broadcast_message = {
+            "type": "event",
+            "event_type": str(event_type),
+            "message": data.get("message", "") if data else "",
+            "data": data or {},
+            "timestamp": "2024-01-01T00:00:00Z"
+        }
+        await manager.broadcast(json.dumps(broadcast_message))
+    except Exception as e:
+        logger.error(f"Error broadcasting event: {e}")
 
 # Subscribe to all events when the module is loaded (async-safe)
 event_system = get_event_system()

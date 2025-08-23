@@ -28,9 +28,20 @@
       "Bash(aichat:*)",
       "Bash(true)",
       "Bash(sed:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(del:*)",
+      "Bash(pip show:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(grep:*)",
+      "Bash(taskkill:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\d C:\\Users\\micha\\Desktop",
+      "C:\\c\\Users\\micha\\Desktop"
+    ]
   }
 }

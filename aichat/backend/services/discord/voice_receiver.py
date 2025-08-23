@@ -25,31 +25,12 @@ except ImportError:
     np = None
     sf = None
 
-try:
-    from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
-    from aichat.core.event_system import EventSeverity, EventType, get_event_system
-except ImportError:
-    # Fallback for when imports aren't available
-    TEMP_AUDIO_DIR = Path("temp_audio")
-
-    def ensure_dirs(*paths):
-        for path in paths:
-            Path(path).mkdir(parents=True, exist_ok=True)
-
-    def get_event_system():
-        class MockEventSystem:
-            async def emit(self, *args, **kwargs):
-                pass
-
-        return MockEventSystem()
-
-    class EventType:
-        AUDIO_CAPTURED = "audio_captured"
-        AUDIO_PROCESSED = "audio_processed"
-        ERROR_OCCURRED = "error_occurred"
-
-    class EventSeverity:
-        ERROR = "error"
+from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
+from aichat.core.event_system import EventSeverity, EventType, get_event_system
+from .config import DiscordConfig
+from .user_tracker import UserTracker
+from .voice_gateway import VoiceGateway, VoicePacket
+from ..voice.stt.vad_service import SpeechSegment
 
 
 logger = logging.getLogger(__name__)
@@ -133,7 +114,19 @@ class VoiceReceiver:
         self.voice_gateway: Optional[VoiceGateway] = None
 
         # Audio processing
-        self.vad = DiscordVADAdapter(config) if config.enable_vad else None
+        # Use unified VAD service from STT pipeline
+        if config.enable_vad:
+            from ..voice.stt.vad_service import VADService, VADConfig
+            vad_config = VADConfig(
+                sample_rate=config.sample_rate,
+                sensitivity=config.vad_sensitivity,
+                min_speech_duration=config.vad_min_duration,
+                max_silence_duration=config.vad_silence_timeout,
+                enable_preprocessing=config.enable_noise_suppression
+            )
+            self.vad = VADService(vad_config)
+        else:
+            self.vad = None
         self.audio_buffers: Dict[int, AudioBuffer] = {}
 
         # Opus decoder (Discord uses Opus audio codec)
