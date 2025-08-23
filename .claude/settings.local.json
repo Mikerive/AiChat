@@ -35,7 +35,8 @@
       "Bash(docker-compose:*)",
       "Bash(grep:*)",
       "Bash(taskkill:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": [],

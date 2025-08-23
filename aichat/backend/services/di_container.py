@@ -252,11 +252,16 @@ def _setup_default_services(container: DIContainer):
         from aichat.backend.services.chat.chat_service import ChatService
         return ChatService()
     
+    def create_voice_service():
+        from aichat.backend.services.voice.voice_service import VoiceService
+        return VoiceService()
+    
     # Register with appropriate lifetimes
     container.register_factory("whisper_service", create_whisper_service, Lifetime.SINGLETON)
     container.register_factory("chatterbox_tts_service", create_chatterbox_tts_service, Lifetime.SINGLETON)
     container.register_factory("audio_io_service", create_audio_io_service, Lifetime.SINGLETON)
     container.register_factory("chat_service", create_chat_service, Lifetime.SCOPED)  # New instance per request
+    container.register_factory("voice_service", create_voice_service, Lifetime.SINGLETON)
 
 # Convenience functions for backward compatibility
 def get_whisper_service():
@@ -274,3 +279,7 @@ def get_audio_io_service():
 def get_chat_service():
     """Get ChatService instance"""
     return get_container().resolve("chat_service")
+
+def get_voice_service():
+    """Get VoiceService instance"""
+    return get_container().resolve("voice_service")

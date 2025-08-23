@@ -49,10 +49,15 @@ aichat/                               # Main Python package
 │   ├── logs/                         # Logging microservice
 │   ├── tools/                        # Development tools
 │   └── cli/                          # Command-line interface
-├── tests/                            # Test suites
-│   ├── chatapp/                      # Application tests
-│   ├── integration/                  # End-to-end tests
-│   └── database/                     # Database test utilities
+├── tests/                            # Simple test suites (no mocking)
+│   ├── test_basic_functionality.py  # Core functionality tests
+│   ├── test_api_endpoints.py        # Real API endpoint tests
+│   └── test_database_operations.py  # Real database operation tests
+├── scripts/                          # Development and debugging scripts
+│   ├── debug/                        # Debugging tools for troubleshooting
+│   ├── examples/                     # Example and test demonstration scripts
+│   ├── interactive/                  # Interactive demos and tools
+│   └── voice/                        # Voice processing test scripts
 ├── data/                             # Application data
 │   ├── audio/                        # Audio files and models
 │   ├── training/                     # Training datasets
@@ -114,6 +119,19 @@ The voice cloning workflow in `src/backend/tts_finetune_app/`:
 - **Documentation**: `/docs` (OpenAPI/Swagger UI)
 
 ## Development Guidelines
+
+### Scripts Organization
+The `scripts/` directory contains development and debugging tools:
+- **debug/**: Troubleshooting scripts for API errors, database issues, service failures
+- **examples/**: Demonstration scripts showing how to use various services
+- **interactive/**: Live demos and interactive testing tools
+- **voice/**: Audio processing and voice pipeline testing scripts
+
+All scripts include proper Python path setup and can be run from the project root:
+```bash
+python scripts/debug/debug_db_operations.py
+python scripts/examples/test_chat_with_gpt4mini.py
+```
 
 ### Path Handling
 - Use `constants/paths.py` for all project paths

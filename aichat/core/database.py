@@ -2,6 +2,7 @@
 Database module for SQLite operations
 """
 
+import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -257,6 +258,9 @@ async def create_character(
                 (name, profile, personality, avatar_url),
             )
             character_id = cursor.lastrowid
+            
+            # Commit the transaction
+            await db.commit()
 
             # Get created character
             cursor = await db.execute(
@@ -381,6 +385,9 @@ async def create_chat_log(
                 ),
             )
             log_id = cursor.lastrowid
+            
+            # Commit the transaction
+            await db.commit()
 
             # Get created log
             cursor = await db.execute("SELECT * FROM chat_logs WHERE id = ?", (log_id,))
@@ -454,6 +461,9 @@ async def create_training_data(
                 (filename, transcript, duration, speaker, emotion, quality),
             )
             data_id = cursor.lastrowid
+            
+            # Commit the transaction
+            await db.commit()
 
             # Get created entry
             cursor = await db.execute(
@@ -523,6 +533,9 @@ async def create_voice_model(
                 (name, model_path, character_id, status, epochs_trained, loss),
             )
             model_id = cursor.lastrowid
+            
+            # Commit the transaction
+            await db.commit()
 
             # Get created model
             cursor = await db.execute(
@@ -590,9 +603,12 @@ async def log_event(
         async with db_manager.get_session() as db:
             cursor = await db.execute(
                 "INSERT INTO event_logs (event_type, message, data, severity, source) VALUES (?, ?, ?, ?, ?)",
-                (event_type, message, str(data) if data else None, severity, source),
+                (event_type, message, json.dumps(data) if data else None, severity, source),
             )
             event_id = cursor.lastrowid
+            
+            # Commit the transaction
+            await db.commit()
 
             # Get created event
             cursor = await db.execute(
@@ -604,7 +620,7 @@ async def log_event(
                 id=row["id"],
                 event_type=row["event_type"],
                 message=row["message"],
-                data=eval(row["data"]) if row["data"] else None,
+                data=json.loads(row["data"]) if row["data"] and row["data"] != "None" else None,
                 severity=row["severity"],
                 source=row["source"],
                 timestamp=datetime.fromisoformat(row["timestamp"]),

@@ -127,11 +127,11 @@ class PydanticAIService:
         agent = Agent(
             model=default_model,
             deps_type=CharacterContext,
-            system_prompt=self._build_system_prompt,
+            instructions=self._build_system_prompt,
         )
 
-        # Register function tools
-        self._register_tools(agent)
+        # Register function tools (DISABLED - using new simplified architecture)
+        # self._register_tools(agent)
 
         return agent
 

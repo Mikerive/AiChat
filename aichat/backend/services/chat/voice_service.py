@@ -9,7 +9,7 @@ from pathlib import Path
 from aichat.constants.paths import GENERATED_AUDIO_DIR, TTS_MODELS_DIR, ensure_dirs
 from aichat.core.event_system import EventSeverity, EventType, get_event_system
 
-from ..io_services.audio_io_service import AudioIOService
+from ..audio.audio_io_service import AudioIOService
 
 logger = logging.getLogger(__name__)
 

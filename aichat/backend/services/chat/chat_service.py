@@ -103,11 +103,20 @@ class ChatService:
                     raise RuntimeError(f"OpenRouter service is required but not available: {e}")
             
             # Generate response using OpenRouter
-            response = await self._openrouter_service.generate_response(
+            llm_response = await self._openrouter_service.generate_response(
                 message=message,
                 character_name=character.name,
-                personality=character.personality,
-                context=character.profile
+                character_personality=character.personality,
+                character_profile=character.profile
+            )
+            
+            # Convert dictionary response to ChatResponse object
+            response = ChatResponse(
+                user_input=message,
+                response=llm_response["response"],
+                character=character_name,
+                emotion=llm_response.get("emotion", "neutral"),
+                model_used=llm_response.get("model_used", "unknown")
             )
             
             logger.info(f"Generated response for {character_name}: {len(response.response)} chars")
