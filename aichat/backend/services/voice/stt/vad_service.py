@@ -34,13 +34,23 @@ except ImportError:
 
 try:
     from models import settings_dao, vad_model
-
-    from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
-    from aichat.core.event_system import EventSeverity, EventType, get_event_system
+    MODELS_AVAILABLE = True
 except ImportError:
-    # Set fallback values when models are not available
+    MODELS_AVAILABLE = False
     settings_dao = None
     vad_model = None
+
+try:
+    from aichat.constants.paths import TEMP_AUDIO_DIR, ensure_dirs
+    from aichat.core.event_system import EventSeverity, EventType, get_event_system
+    CORE_AVAILABLE = True
+except ImportError:
+    CORE_AVAILABLE = False
+    TEMP_AUDIO_DIR = Path("temp/audio")
+    ensure_dirs = lambda x: None
+    EventSeverity = None
+    EventType = None
+    get_event_system = lambda: None
 
 logger = logging.getLogger(__name__)
 

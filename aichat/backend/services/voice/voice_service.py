@@ -36,7 +36,7 @@ class VoiceService:
         
         # Initialize both legacy and new systems
         self._initialize_piper()  # Legacy support
-        asyncio.create_task(self._initialize_smart_tts())
+        # Smart TTS initialization will be done on first use
 
     def _initialize_piper(self):
         """Initialize Piper TTS model"""

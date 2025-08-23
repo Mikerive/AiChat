@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class TTSBackend(Enum):
     """Available TTS backend options."""
+    AUTO = "auto"
     CHATTERBOX = "chatterbox"
     PIPER = "piper"
     SYSTEM = "system"
@@ -23,10 +24,10 @@ class SmartTTSSelector:
     Currently a minimal implementation for import compatibility.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None, preferred_backend: Optional[TTSBackend] = None):
         """Initialize the TTS selector."""
         self.config = config or {}
-        self.current_backend = TTSBackend.CHATTERBOX
+        self.current_backend = preferred_backend or TTSBackend.CHATTERBOX
         logger.info("SmartTTSSelector initialized with minimal implementation")
     
     def select_backend(self, text: str, character: str = None) -> TTSBackend:
