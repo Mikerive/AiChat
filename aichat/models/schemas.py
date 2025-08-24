@@ -24,6 +24,7 @@ class ChatMessage(BaseModel):
 
     text: str
     character: str
+    user_id: Optional[str] = "default_user"  # Default user ID for backward compatibility
 
     @validator("text")
     def text_must_not_be_empty(cls, v):

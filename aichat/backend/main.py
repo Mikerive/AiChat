@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 # Local imports
-from aichat.backend.routes import chat, system, voice, websocket
+from aichat.backend.routes import chat, system, voice, websocket, memory
 from aichat.backend.services.audio.audio_io_service import AudioIOService
 from aichat.backend.utils.logging_config import setup_logging
 from aichat.core.config import get_settings
@@ -101,6 +101,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
     app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
     app.include_router(system.router, prefix="/api/system", tags=["system"])
+    app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
     app.include_router(logs_router, prefix="/api", tags=["logs"])
     app.include_router(websocket.router, prefix="/api")
 

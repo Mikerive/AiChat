@@ -103,9 +103,9 @@ async def chat_with_character(
         if not character:
             raise HTTPException(status_code=404, detail="Character not found")
 
-        # Process chat message
+        # Process chat message with user_id
         response = await chat_service.process_message(
-            message.text, character.id, message.character
+            message.text, character.id, message.character, message.user_id
         )
 
         # Save to database
